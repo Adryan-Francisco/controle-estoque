@@ -202,24 +202,43 @@ export const DataProvider = ({ children }) => {
       const mappedData = {
         nome: productData.nome,
         descricao: productData.descricao || '',
-        valor_unit: productData.valor_unit || productData.preco || 0,
-        quantidade: productData.quantidade || 0,
-        valor_total: productData.valor_total || 0,
-        entrada: productData.entrada || 0,
-        saida: productData.saida || 0,
-        estoque: productData.estoque || productData.quantidade || 0,
-        user_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        valor_unit: Number(productData.valor_unit || productData.preco || 0),
+        quantidade: Number(productData.quantidade || 0),
+        valor_total: Number(productData.valor_total || 0),
+        user_id: user.id
       }
       
-      const { data, error } = await supabase
+      console.log('🔍 Dados mapeados para inserção:', mappedData)
+      
+      // Tentar inserir na tabela produtos
+      let { data, error } = await supabase
         .from('produtos')
         .insert([mappedData])
         .select()
 
+      // Se a tabela produtos não existir, tentar com uma estrutura mais simples
+      if (error && error.code === 'PGRST116') {
+        console.log('⚠️ Tabela produtos não encontrada, tentando estrutura simples...')
+        const simpleData = {
+          nome: productData.nome,
+          descricao: productData.descricao || '',
+          preco: Number(productData.valor_unit || productData.preco || 0),
+          quantidade: Number(productData.quantidade || 0),
+          user_id: user.id
+        }
+        
+        const result = await supabase
+          .from('produtos')
+          .insert([simpleData])
+          .select()
+        
+        data = result.data
+        error = result.error
+      }
+
       if (error) {
         console.error('❌ Erro ao salvar produto no Supabase:', error)
+        console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2))
         return { data: null, error }
       }
 
