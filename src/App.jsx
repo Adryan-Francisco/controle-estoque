@@ -9,7 +9,6 @@ import ProductsPage from './components/ProductsPage'
 import SalesControl from './components/SalesControl'
 import SalesReports from './components/SalesReports'
 import DataIsolationNotification from './components/DataIsolationNotification'
-// import QuickDebug from './components/QuickDebug'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -35,37 +34,36 @@ function App() {
       <DataProvider>
         <NotificationProvider>
           <ProtectedRoute>
-          <div style={{
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, var(--primary-50) 0%, var(--secondary-50) 50%, var(--gray-50) 100%)'
-          }}>
-            <Header 
-              currentPage={currentPage}
-              onNavigateToDashboard={navigateToDashboard}
-              onNavigateToProducts={navigateToProducts}
-              onNavigateToSales={navigateToSales}
-              onNavigateToReports={navigateToReports}
-            />
-            {currentPage === 'dashboard' ? (
-              <Dashboard 
+            <div style={{
+              minHeight: '100vh',
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%)'
+            }}>
+              <Header 
+                currentPage={currentPage}
+                onNavigateToDashboard={navigateToDashboard}
                 onNavigateToProducts={navigateToProducts}
                 onNavigateToSales={navigateToSales}
+                onNavigateToReports={navigateToReports}
               />
-            ) : currentPage === 'products' ? (
-              <ProductsPage onBack={navigateToDashboard} />
-            ) : currentPage === 'sales' ? (
-              <SalesControl onBack={navigateToDashboard} />
-            ) : currentPage === 'reports' ? (
-              <SalesReports onBack={navigateToDashboard} />
-            ) : (
-              <Dashboard 
-                onNavigateToProducts={navigateToProducts}
-                onNavigateToSales={navigateToSales}
-              />
-            )}
-            <DataIsolationNotification />
-            {/* <QuickDebug /> */}
-          </div>
+              {currentPage === 'dashboard' ? (
+                <Dashboard 
+                  onNavigateToProducts={navigateToProducts}
+                  onNavigateToSales={navigateToSales}
+                />
+              ) : currentPage === 'products' ? (
+                <ProductsPage onBack={navigateToDashboard} />
+              ) : currentPage === 'sales' ? (
+                <SalesControl onBack={navigateToDashboard} />
+              ) : currentPage === 'reports' ? (
+                <SalesReports onBack={navigateToDashboard} />
+              ) : (
+                <Dashboard 
+                  onNavigateToProducts={navigateToProducts}
+                  onNavigateToSales={navigateToSales}
+                />
+              )}
+              <DataIsolationNotification />
+            </div>
           </ProtectedRoute>
         </NotificationProvider>
       </DataProvider>
