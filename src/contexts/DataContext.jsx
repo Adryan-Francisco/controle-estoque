@@ -259,11 +259,22 @@ export const DataProvider = ({ children }) => {
       return
     }
 
-    await Promise.all([
-      fetchProducts(),
-      fetchMovements(),
-      fetchSales()
-    ])
+    try {
+      // Carregar dados sequencialmente para evitar sobrecarga
+      console.log('🔄 Iniciando carregamento de dados...')
+      
+      await fetchProducts()
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Aguardar 2 segundos
+      
+      await fetchMovements()
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Aguardar 2 segundos
+      
+      await fetchSales()
+      
+      console.log('✅ Todos os dados carregados com sucesso!')
+    } catch (error) {
+      console.error('Erro ao recarregar dados:', error)
+    }
   }
 
   // Escutar eventos de mudança de usuário
@@ -299,12 +310,14 @@ export const DataProvider = ({ children }) => {
   // Limpar dados quando usuário mudar
   useEffect(() => {
     if (user) {
-      // Aguardar um pouco antes de carregar dados para evitar requisições simultâneas
+      // Aguardar mais tempo antes de carregar dados para evitar sobrecarga
       const timer = setTimeout(() => {
         if (products.length === 0) {
-          refreshAllData()
+          console.log('👤 Usuário logado, iniciando carregamento de dados...')
+          // Carregar apenas produtos inicialmente
+          fetchProducts()
         }
-      }, 1000)
+      }, 3000) // Aguardar 3 segundos
       
       return () => clearTimeout(timer)
     } else {

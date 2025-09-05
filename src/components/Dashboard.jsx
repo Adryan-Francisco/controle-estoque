@@ -146,6 +146,42 @@ const Dashboard = ({ onNavigateToProducts }) => {
       }}>
 
 
+        {/* Botão de carregar dados */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '2rem'
+        }}>
+          <button
+            onClick={() => {
+              console.log('🔄 Carregando dados manualmente...')
+              refreshAllData()
+            }}
+            style={{
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.75rem',
+              padding: '1rem 2rem',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)'
+              e.target.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)'
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)'
+              e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            🔄 Carregar Dados
+          </button>
+        </div>
+
         {/* Estatísticas principais */}
         <div style={{
           display: 'grid',
