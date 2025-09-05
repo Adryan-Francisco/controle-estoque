@@ -464,7 +464,7 @@ export const DataProvider = ({ children }) => {
 
       console.log('✅ Tabela vendas existe, inserindo dados...')
       
-      // Salvar no Supabase
+      // Salvar no Supabase - usando apenas colunas que existem na tabela
       const { data, error } = await supabase
         .from('vendas')
         .insert([{
@@ -472,11 +472,11 @@ export const DataProvider = ({ children }) => {
           cliente_email: saleData.cliente_email,
           cliente_telefone: saleData.cliente_telefone,
           metodo_pagamento: saleData.metodo_pagamento,
-          observacoes: saleData.observacoes,
           valor_total: saleData.valor_total,
-          itens: saleData.itens,
-          user_id: user.id,
-          created_at: new Date().toISOString()
+          status_pagamento: 'pendente', // Status padrão
+          data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 dias
+          desconto: 0, // Sem desconto por padrão
+          valor_final: saleData.valor_total // Valor final igual ao total
         }])
         .select()
 
@@ -498,8 +498,13 @@ export const DataProvider = ({ children }) => {
         return { data: newSale, error: null }
       }
 
-      // Atualizar lista local
-      const newSale = data[0]
+      // Atualizar lista local com dados completos (incluindo observações e itens)
+      const newSale = {
+        ...data[0],
+        observacoes: saleData.observacoes,
+        itens: saleData.itens,
+        user_id: user.id
+      }
       setSales(prev => [newSale, ...prev])
       
       console.log('✅ Venda adicionada no Supabase:', newSale.cliente_nome)
