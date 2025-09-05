@@ -282,17 +282,19 @@ export const DataProvider = ({ children }) => {
       console.log('📝 Adicionando produto:', productData)
       console.log('👤 Usuário atual:', user.id)
       
-      // Verificar se a tabela produtos existe primeiro
+      // Verificar se a tabela produtos existe primeiro com retry
       console.log('🔍 Verificando tabela produtos...')
-      const { data: testData, error: testError } = await supabase
-        .from('produtos')
-        .select('*')
-        .limit(1)
+      const testResult = await retryWithTimeout(async () => {
+        return await supabase
+          .from('produtos')
+          .select('*')
+          .limit(1)
+      })
 
-      if (testError) {
-        console.error('❌ Erro ao verificar tabela produtos:', testError)
-        console.error('❌ Código do erro:', testError.code)
-        console.error('❌ Mensagem do erro:', testError.message)
+      if (testResult.error) {
+        console.error('❌ Erro ao verificar tabela produtos:', testResult.error)
+        console.error('❌ Código do erro:', testResult.error.code)
+        console.error('❌ Mensagem do erro:', testResult.error.message)
         
         // Se a tabela não existir, criar dados locais
         const newProduct = {
@@ -308,7 +310,7 @@ export const DataProvider = ({ children }) => {
 
       console.log('✅ Tabela produtos existe, inserindo dados...')
       
-      // Mapear campos corretamente para a tabela produtos (sem descricao)
+      // Mapear campos corretamente para a tabela produtos
       const mappedData = {
         nome: productData.nome,
         valor_unit: Number(productData.valor_unit || productData.preco || 0),
@@ -322,37 +324,19 @@ export const DataProvider = ({ children }) => {
       
       console.log('🔍 Dados mapeados para inserção:', mappedData)
       
-      // Tentar inserir na tabela produtos
-      let { data, error } = await supabase
-        .from('produtos')
-        .insert([mappedData])
-        .select()
-
-      // Se a tabela produtos não existir, tentar com uma estrutura mais simples
-      if (error && error.code === 'PGRST116') {
-        console.log('⚠️ Tabela produtos não encontrada, tentando estrutura simples...')
-        const simpleData = {
-          nome: productData.nome,
-          descricao: productData.descricao || '',
-          preco: Number(productData.valor_unit || productData.preco || 0),
-          quantidade: Number(productData.quantidade || 0),
-          user_id: user.id
-        }
-        
-        const result = await supabase
+      // Tentar inserir na tabela produtos com retry
+      const insertResult = await retryWithTimeout(async () => {
+        return await supabase
           .from('produtos')
-          .insert([simpleData])
+          .insert([mappedData])
           .select()
-        
-        data = result.data
-        error = result.error
-      }
+      })
 
-      if (error) {
-        console.error('❌ Erro ao salvar produto no Supabase:', error)
-        console.error('❌ Código do erro:', error.code)
-        console.error('❌ Mensagem do erro:', error.message)
-        console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2))
+      if (insertResult.error) {
+        console.error('❌ Erro ao salvar produto no Supabase:', insertResult.error)
+        console.error('❌ Código do erro:', insertResult.error.code)
+        console.error('❌ Mensagem do erro:', insertResult.error.message)
+        console.error('❌ Detalhes do erro:', JSON.stringify(insertResult.error, null, 2))
         
         // Se der erro no Supabase, salvar localmente mesmo assim
         const newProduct = {
@@ -367,14 +351,24 @@ export const DataProvider = ({ children }) => {
       }
 
       // Atualizar lista local
-      const newProduct = data[0]
+      const newProduct = insertResult.data[0]
       setProducts(prev => [newProduct, ...prev])
       
       console.log('✅ Produto adicionado no Supabase:', newProduct.nome)
       return { data: newProduct, error: null }
     } catch (error) {
       console.error('❌ Erro crítico ao adicionar produto:', error)
-      return { data: null, error }
+      
+      // Em caso de erro crítico, salvar localmente
+      const newProduct = {
+        id: Date.now(),
+        ...productData,
+        user_id: user.id,
+        created_at: new Date().toISOString()
+      }
+      setProducts(prev => [newProduct, ...prev])
+      console.log('✅ Produto salvo localmente (erro crítico)')
+      return { data: newProduct, error: null }
     }
   }
 
@@ -469,6 +463,35 @@ export const DataProvider = ({ children }) => {
     }
   }
 
+  // Função auxiliar para retry com timeout
+  const retryWithTimeout = async (operation, maxRetries = 3, timeout = 10000) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Tentativa ${attempt}/${maxRetries}...`)
+        
+        // Criar promise com timeout
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout da requisição')), timeout)
+        })
+        
+        const operationPromise = operation()
+        const result = await Promise.race([operationPromise, timeoutPromise])
+        
+        console.log(`✅ Sucesso na tentativa ${attempt}`)
+        return result
+      } catch (error) {
+        console.error(`❌ Tentativa ${attempt} falhou:`, error.message)
+        
+        if (attempt === maxRetries) {
+          throw error
+        }
+        
+        // Aguardar antes da próxima tentativa
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
+    }
+  }
+
   // Adicionar venda
   const addSale = async (saleData) => {
     if (!user) return { error: 'Usuário não autenticado' }
@@ -477,17 +500,19 @@ export const DataProvider = ({ children }) => {
       console.log('📝 Adicionando venda:', saleData)
       console.log('👤 Usuário atual:', user.id)
       
-      // Verificar se a tabela vendas existe primeiro
+      // Verificar se a tabela vendas existe primeiro com retry
       console.log('🔍 Verificando tabela vendas...')
-      const { data: testData, error: testError } = await supabase
-        .from('vendas')
-        .select('*')
-        .limit(1)
+      const testResult = await retryWithTimeout(async () => {
+        return await supabase
+          .from('vendas')
+          .select('*')
+          .limit(1)
+      })
 
-      if (testError) {
-        console.error('❌ Erro ao verificar tabela vendas:', testError)
-        console.error('❌ Código do erro:', testError.code)
-        console.error('❌ Mensagem do erro:', testError.message)
+      if (testResult.error) {
+        console.error('❌ Erro ao verificar tabela vendas:', testResult.error)
+        console.error('❌ Código do erro:', testResult.error.code)
+        console.error('❌ Mensagem do erro:', testResult.error.message)
         
         // Se a tabela não existir, criar dados locais
         const newSale = {
@@ -503,27 +528,29 @@ export const DataProvider = ({ children }) => {
 
       console.log('✅ Tabela vendas existe, inserindo dados...')
       
-      // Salvar no Supabase - usando apenas colunas que existem na tabela
-      const { data, error } = await supabase
-        .from('vendas')
-        .insert([{
-          cliente_nome: saleData.cliente_nome,
-          cliente_email: saleData.cliente_email,
-          cliente_telefone: saleData.cliente_telefone,
-          metodo_pagamento: saleData.metodo_pagamento,
-          valor_total: saleData.valor_total,
-          status_pagamento: 'pendente', // Status padrão
-          data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 dias
-          desconto: 0, // Sem desconto por padrão
-          valor_final: saleData.valor_total // Valor final igual ao total
-        }])
-        .select()
+      // Salvar no Supabase com retry
+      const insertResult = await retryWithTimeout(async () => {
+        return await supabase
+          .from('vendas')
+          .insert([{
+            cliente_nome: saleData.cliente_nome,
+            cliente_email: saleData.cliente_email,
+            cliente_telefone: saleData.cliente_telefone,
+            metodo_pagamento: saleData.metodo_pagamento,
+            valor_total: saleData.valor_total,
+            status_pagamento: 'pendente',
+            data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            desconto: 0,
+            valor_final: saleData.valor_total
+          }])
+          .select()
+      })
 
-      if (error) {
-        console.error('❌ Erro ao salvar venda no Supabase:', error)
-        console.error('❌ Código do erro:', error.code)
-        console.error('❌ Mensagem do erro:', error.message)
-        console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2))
+      if (insertResult.error) {
+        console.error('❌ Erro ao salvar venda no Supabase:', insertResult.error)
+        console.error('❌ Código do erro:', insertResult.error.code)
+        console.error('❌ Mensagem do erro:', insertResult.error.message)
+        console.error('❌ Detalhes do erro:', JSON.stringify(insertResult.error, null, 2))
         
         // Se der erro no Supabase, salvar localmente mesmo assim
         const newSale = {
@@ -537,9 +564,9 @@ export const DataProvider = ({ children }) => {
         return { data: newSale, error: null }
       }
 
-      // Atualizar lista local com dados completos (incluindo observações e itens)
+      // Atualizar lista local com dados completos
       const newSale = {
-        ...data[0],
+        ...insertResult.data[0],
         observacoes: saleData.observacoes,
         itens: saleData.itens,
         user_id: user.id
@@ -550,7 +577,17 @@ export const DataProvider = ({ children }) => {
       return { data: newSale, error: null }
     } catch (error) {
       console.error('❌ Erro crítico ao adicionar venda:', error)
-      return { data: null, error }
+      
+      // Em caso de erro crítico, salvar localmente
+      const newSale = {
+        id: Date.now(),
+        ...saleData,
+        user_id: user.id,
+        created_at: new Date().toISOString()
+      }
+      setSales(prev => [newSale, ...prev])
+      console.log('✅ Venda salva localmente (erro crítico)')
+      return { data: newSale, error: null }
     }
   }
 
