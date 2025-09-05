@@ -88,8 +88,22 @@ const SupabaseTest = () => {
         }
       }
 
-      // Teste 5: Tentar inserir uma venda de teste
-      if (!vendasError) {
+      // Teste 5: Verificar autenticação atual
+      addTestResult('🔍 Verificando autenticação atual...', 'info')
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        addTestResult(`❌ Erro de autenticação: ${authError.message}`, 'error')
+      } else if (!currentUser) {
+        addTestResult('❌ Nenhum usuário autenticado', 'error')
+        addTestResult('💡 Faça login primeiro para testar inserções', 'info')
+      } else {
+        addTestResult(`✅ Usuário autenticado: ${currentUser.email}`, 'success')
+        addTestResult(`🆔 User ID: ${currentUser.id}`, 'info')
+      }
+
+      // Teste 6: Tentar inserir uma venda de teste (apenas se autenticado)
+      if (!vendasError && currentUser) {
         addTestResult('🔍 Testando inserção de venda...', 'info')
         const testSale = {
           cliente_nome: 'Cliente Teste',
@@ -100,10 +114,14 @@ const SupabaseTest = () => {
           status_pagamento: 'pendente',
           data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           desconto: 0,
-          valor_final: 50.00
+          valor_final: 50.00,
+          observacoes: 'Teste de inserção'
         }
 
         try {
+          addTestResult('📝 Dados da venda:', 'info')
+          addTestResult(JSON.stringify(testSale, null, 2), 'info')
+          
           const { data: saleData, error: saleError } = await supabase
             .from('vendas')
             .insert([testSale])
@@ -112,10 +130,14 @@ const SupabaseTest = () => {
           if (saleError) {
             addTestResult(`❌ Erro ao inserir venda: ${saleError.message}`, 'error')
             addTestResult(`❌ Código do erro: ${saleError.code}`, 'error')
+            addTestResult(`❌ Detalhes: ${JSON.stringify(saleError, null, 2)}`, 'error')
             
             if (saleError.code === '42501') {
               addTestResult('🔒 Erro de Row Level Security (RLS) detectado', 'error')
-              addTestResult('💡 Solução: Desative RLS na tabela vendas no Supabase', 'info')
+              addTestResult('💡 Solução: Verifique as políticas RLS na tabela vendas', 'info')
+            } else if (saleError.code === 'PGRST301') {
+              addTestResult('🔒 Erro de permissão - usuário não tem acesso', 'error')
+              addTestResult('💡 Solução: Verifique se o usuário tem permissão para inserir', 'info')
             }
           } else {
             addTestResult(`✅ Venda inserida com sucesso! ID: ${saleData[0]?.id}`, 'success')
@@ -129,6 +151,30 @@ const SupabaseTest = () => {
           }
         } catch (networkError) {
           addTestResult(`❌ Erro de rede: ${networkError.message}`, 'error')
+        }
+      } else if (!currentUser) {
+        addTestResult('⏭️ Pulando teste de venda - usuário não autenticado', 'info')
+      }
+
+      // Teste 7: Verificar políticas RLS específicas
+      if (currentUser) {
+        addTestResult('🔍 Verificando políticas RLS...', 'info')
+        
+        try {
+          // Testar SELECT primeiro (geralmente funciona)
+          const { data: selectTest, error: selectError } = await supabase
+            .from('vendas')
+            .select('id')
+            .limit(1)
+          
+          if (selectError) {
+            addTestResult(`❌ Erro no SELECT: ${selectError.message}`, 'error')
+            addTestResult(`❌ Código: ${selectError.code}`, 'error')
+          } else {
+            addTestResult('✅ SELECT funcionando - políticas RLS OK', 'success')
+          }
+        } catch (selectTestError) {
+          addTestResult(`❌ Erro no teste SELECT: ${selectTestError.message}`, 'error')
         }
       }
 
