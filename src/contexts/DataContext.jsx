@@ -20,11 +20,16 @@ export const DataProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [lastDataFetch, setLastDataFetch] = useState(0)
   const [cache, setCache] = useState({})
+  const [requestQueue, setRequestQueue] = useState([])
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false)
+  const [lastRequestTime, setLastRequestTime] = useState(0)
   
-  // Configurações de throttling
-  const FETCH_INTERVAL = 300000 // 5 minutos
+  // Configurações de throttling ULTRA restritivas para evitar ERR_INSUFFICIENT_RESOURCES
+  const FETCH_INTERVAL = 1800000 // 30 minutos
   const REQUEST_TIMEOUT = 20000 // 20 segundos
-  const MAX_RETRIES = 2
+  const MAX_RETRIES = 0 // Sem retry para evitar sobrecarga
+  const MIN_REQUEST_INTERVAL = 30000 // 30 segundos entre requisições
+  const MAX_QUEUE_SIZE = 1 // Apenas 1 requisição na fila
   
   const { user } = useAuth()
 
@@ -51,6 +56,43 @@ export const DataProvider = ({ children }) => {
       }
     }
   }, [REQUEST_TIMEOUT, MAX_RETRIES])
+
+  // Carregar dados locais como fallback
+  const loadLocalData = useCallback(() => {
+    if (!user) return
+
+    console.log('📱 Carregando dados locais como fallback')
+    
+    try {
+      // Carregar produtos
+      const localProducts = localStorage.getItem(`products_${user.id}`)
+      if (localProducts) {
+        setProducts(JSON.parse(localProducts))
+      }
+
+      // Carregar movimentações
+      const localMovements = localStorage.getItem(`movements_${user.id}`)
+      if (localMovements) {
+        setMovements(JSON.parse(localMovements))
+      }
+
+      // Carregar vendas
+      const localSales = localStorage.getItem(`sales_${user.id}`)
+      if (localSales) {
+        setSales(JSON.parse(localSales))
+      }
+
+      // Carregar bolos
+      const localBolos = localStorage.getItem(`bolos_${user.id}`)
+      if (localBolos) {
+        setBolos(JSON.parse(localBolos))
+      }
+
+      console.log('✅ Dados locais carregados com sucesso')
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados locais:', error)
+    }
+  }, [user])
 
   // Limpar todos os dados quando o usuário mudar
   const clearAllData = useCallback(() => {
@@ -327,37 +369,54 @@ export const DataProvider = ({ children }) => {
     }
   }, [user, cache, lastDataFetch, FETCH_INTERVAL, makeRequest])
 
-  // Atualizar todos os dados
+  // Atualizar todos os dados - ULTRA conservadora para evitar ERR_INSUFFICIENT_RESOURCES
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     if (!user) return
 
-    console.log('🔄 Atualizando todos os dados...')
+    const now = Date.now()
     
-    // Executar todas as buscas em paralelo, mas com throttling
-    const promises = []
-    
-    // Adicionar delay entre as requisições para evitar sobrecarga
-    promises.push(fetchProducts(forceRefresh))
-    
-    setTimeout(() => {
-      promises.push(fetchMovements(forceRefresh))
-    }, 1000)
-    
-    setTimeout(() => {
-      promises.push(fetchBolos(forceRefresh))
-    }, 2000)
-    
-    setTimeout(() => {
-      promises.push(fetchSales(forceRefresh))
-    }, 3000)
+    // Verificar se já fez uma requisição recentemente
+    if (!forceRefresh && (now - lastDataFetch) < FETCH_INTERVAL) {
+      console.log('⏰ Aguardando intervalo entre requisições (30 minutos)')
+      return
+    }
+
+    // Verificar se há requisição em andamento
+    if (isLoading) {
+      console.log('⏳ Já há uma requisição em andamento, ignorando')
+      return
+    }
+
+    setIsLoading(true)
+    setLastDataFetch(now)
 
     try {
-      await Promise.allSettled(promises)
-      console.log('✅ Todos os dados atualizados')
+      console.log('🔄 Iniciando busca de dados ULTRA conservadora...')
+      
+      // Buscar apenas produtos primeiro (mais crítico)
+      await fetchProducts(forceRefresh)
+      await new Promise(resolve => setTimeout(resolve, 15000)) // Pausa de 15s
+      
+      // Buscar movimentações
+      await fetchMovements(forceRefresh)
+      await new Promise(resolve => setTimeout(resolve, 15000)) // Pausa de 15s
+      
+      // Buscar vendas
+      await fetchSales(forceRefresh)
+      await new Promise(resolve => setTimeout(resolve, 15000)) // Pausa de 15s
+      
+      // Buscar bolos por último
+      await fetchBolos(forceRefresh)
+      
+      console.log('✅ Todos os dados carregados com sucesso')
     } catch (error) {
-      console.error('❌ Erro ao atualizar dados:', error)
+      console.error('❌ Erro ao carregar dados:', error)
+      // Em caso de erro, usar dados locais
+      loadLocalData()
+    } finally {
+      setIsLoading(false)
     }
-  }, [user, fetchProducts, fetchMovements, fetchBolos, fetchSales])
+  }, [user, lastDataFetch, FETCH_INTERVAL, isLoading, fetchProducts, fetchMovements, fetchSales, fetchBolos])
 
   // Adicionar produto
   const addProduct = async (productData) => {
@@ -993,13 +1052,17 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       console.log('👤 Usuário logado:', user.email)
-      // Carregar dados do usuário atual
-      refreshAllData()
+      // Carregar dados locais primeiro (mais rápido)
+      loadLocalData()
+      // Depois tentar sincronizar com Supabase (com delay)
+      setTimeout(() => {
+        refreshAllData()
+      }, 5000) // Aguardar 5 segundos antes de tentar Supabase
     } else {
       console.log('👤 Usuário deslogado')
       clearAllData()
     }
-  }, [user, clearAllData, refreshAllData])
+  }, [user, clearAllData, loadLocalData, refreshAllData])
 
   // Escutar mudanças de usuário
   useEffect(() => {
