@@ -196,15 +196,26 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      // Salvar no Supabase
+      console.log('📝 Adicionando produto:', productData)
+      
+      // Mapear campos corretamente para a tabela produtos
+      const mappedData = {
+        nome: productData.nome,
+        descricao: productData.descricao || '',
+        valor_unit: productData.valor_unit || productData.preco || 0,
+        quantidade: productData.quantidade || 0,
+        valor_total: productData.valor_total || 0,
+        entrada: productData.entrada || 0,
+        saida: productData.saida || 0,
+        estoque: productData.estoque || productData.quantidade || 0,
+        user_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      
       const { data, error } = await supabase
         .from('produtos')
-        .insert([{
-          ...productData,
-          user_id: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
+        .insert([mappedData])
         .select()
 
       if (error) {
@@ -229,13 +240,24 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      // Atualizar no Supabase
+      console.log('📝 Atualizando produto:', productData)
+      
+      // Mapear campos corretamente para a tabela produtos
+      const mappedData = {
+        nome: productData.nome,
+        descricao: productData.descricao || '',
+        valor_unit: productData.valor_unit || productData.preco || 0,
+        quantidade: productData.quantidade || 0,
+        valor_total: productData.valor_total || 0,
+        entrada: productData.entrada || 0,
+        saida: productData.saida || 0,
+        estoque: productData.estoque || productData.quantidade || 0,
+        updated_at: new Date().toISOString()
+      }
+      
       const { data, error } = await supabase
         .from('produtos')
-        .update({
-          ...productData,
-          updated_at: new Date().toISOString()
-        })
+        .update(mappedData)
         .eq('id', id)
         .eq('user_id', user.id)
         .select()

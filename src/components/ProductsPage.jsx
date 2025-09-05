@@ -854,9 +854,14 @@ const ProductForm = ({ product, onSave, onCancel }) => {
     // Calcular valor total
     const valor_total = (formData.preco || 0) * (formData.quantidade || 0)
     const productData = {
-      ...formData,
+      nome: formData.nome,
+      descricao: formData.descricao,
       valor_unit: formData.preco,
-      valor_total
+      quantidade: formData.quantidade,
+      valor_total,
+      entrada: 0,
+      saida: 0,
+      estoque: formData.estoque || formData.quantidade
     }
 
     onSave(productData)
