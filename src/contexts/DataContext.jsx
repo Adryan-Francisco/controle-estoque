@@ -470,6 +470,45 @@ export const DataProvider = ({ children }) => {
     }
   }
 
+  // Adicionar bolo na tabela bolos do Supabase
+  const addBolo = async (boloData) => {
+    if (!user) return { error: 'Usuário não autenticado' }
+
+    try {
+      console.log('📝 Adicionando bolo:', boloData)
+      
+      const boloDataToInsert = {
+        nome: boloData.nome,
+        descricao: boloData.descricao || '',
+        preco_por_kg: Number(boloData.preco_por_kg || 0),
+        categoria: boloData.categoria || 'Tradicional',
+        disponibilidade: true
+      }
+      
+      console.log('🔍 Dados do bolo para inserção:', boloDataToInsert)
+      
+      const { data, error } = await supabase
+        .from('bolos')
+        .insert([boloDataToInsert])
+        .select()
+
+      if (error) {
+        console.error('❌ Erro ao salvar bolo no Supabase:', error)
+        console.error('❌ Código do erro:', error.code)
+        console.error('❌ Mensagem do erro:', error.message)
+        
+        // Se der erro no Supabase, retornar erro
+        return { data: null, error }
+      }
+
+      console.log('✅ Bolo adicionado no Supabase:', data[0].nome)
+      return { data: data[0], error: null }
+    } catch (error) {
+      console.error('❌ Erro crítico ao adicionar bolo:', error)
+      return { data: null, error }
+    }
+  }
+
   // Adicionar movimentação
   const addMovement = async (movementData) => {
     if (!user) return { error: 'Usuário não autenticado' }
@@ -614,46 +653,29 @@ export const DataProvider = ({ children }) => {
 
       console.log('✅ Tabela vendas existe, inserindo dados...')
       
-      // Salvar no Supabase com retry - usando RPC para contornar RLS
+      // Salvar no Supabase com retry - inserção direta na tabela vendas
       const insertResult = await retryWithTimeout(async () => {
-        // Primeiro, tentar inserção normal
-        try {
-          return await supabase
-            .from('vendas')
-            .insert([{
-              cliente_nome: saleData.cliente_nome,
-              cliente_email: saleData.cliente_email,
-              cliente_telefone: saleData.cliente_telefone,
-              metodo_pagamento: saleData.metodo_pagamento,
-              valor_total: saleData.valor_total,
-              status_pagamento: 'pendente',
-              data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              desconto: 0,
-              valor_final: saleData.valor_total
-            }])
-            .select()
-        } catch (rlsError) {
-          console.log('⚠️ Erro de RLS, tentando com RPC...')
-          
-          // Se der erro de RLS, tentar com RPC
-          const { data: rpcData, error: rpcError } = await supabase.rpc('insert_venda', {
-            p_cliente_nome: saleData.cliente_nome,
-            p_cliente_email: saleData.cliente_email,
-            p_cliente_telefone: saleData.cliente_telefone,
-            p_metodo_pagamento: saleData.metodo_pagamento,
-            p_valor_total: saleData.valor_total,
-            p_status_pagamento: 'pendente',
-            p_data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            p_desconto: 0,
-            p_valor_final: saleData.valor_total
-          })
-          
-          if (rpcError) {
-            throw rpcError
-          }
-          
-          return { data: rpcData, error: null }
+        console.log('🔄 Tentando inserir venda na tabela vendas...')
+        
+        const vendaData = {
+          cliente_nome: saleData.cliente_nome,
+          cliente_email: saleData.cliente_email,
+          cliente_telefone: saleData.cliente_telefone,
+          metodo_pagamento: saleData.metodo_pagamento,
+          valor_total: saleData.valor_total,
+          status_pagamento: 'pendente',
+          data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          desconto: 0,
+          valor_final: saleData.valor_total,
+          observacoes: saleData.observacoes || null
         }
+        
+        console.log('📝 Dados da venda para inserção:', vendaData)
+        
+        return await supabase
+          .from('vendas')
+          .insert([vendaData])
+          .select()
       })
 
       if (insertResult.error) {
@@ -691,9 +713,44 @@ export const DataProvider = ({ children }) => {
         return { data: newSale, error: null }
       }
 
+      // Venda inserida com sucesso no Supabase
+      const vendaInserida = insertResult.data[0]
+      console.log('✅ Venda inserida no Supabase:', vendaInserida.id)
+
+      // Agora inserir os itens da venda na tabela venda_itens
+      if (saleData.itens && saleData.itens.length > 0) {
+        console.log('🔄 Inserindo itens da venda na tabela venda_itens...')
+        
+        try {
+          const itensData = saleData.itens.map(item => ({
+            venda_id: vendaInserida.id,
+            bolo_id: item.produto_id || null, // Se não tiver produto_id, usar null
+            quantidade: item.peso || 1,
+            preco_unitario: item.preco_por_kg || 0,
+            subtotal: item.preco_total || 0,
+            tipo_venda: 'kg' // Tipo de venda por peso
+          }))
+          
+          console.log('📝 Dados dos itens para inserção:', itensData)
+          
+          const { data: itensInseridos, error: itensError } = await supabase
+            .from('venda_itens')
+            .insert(itensData)
+            .select()
+          
+          if (itensError) {
+            console.error('❌ Erro ao inserir itens da venda:', itensError)
+          } else {
+            console.log('✅ Itens da venda inseridos:', itensInseridos.length, 'itens')
+          }
+        } catch (itensError) {
+          console.error('❌ Erro crítico ao inserir itens:', itensError)
+        }
+      }
+
       // Atualizar lista local com dados completos
       const newSale = {
-        ...insertResult.data[0],
+        ...vendaInserida,
         observacoes: saleData.observacoes,
         itens: saleData.itens,
         user_id: user.id
@@ -789,6 +846,7 @@ export const DataProvider = ({ children }) => {
     deleteProduct,
     addMovement,
     addSale,
+    addBolo,
     clearAllData,
     syncLocalData
   }

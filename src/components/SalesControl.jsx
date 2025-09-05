@@ -21,7 +21,7 @@ import {
 
 const SalesControl = () => {
   const { user } = useAuth()
-  const { sales, loading, addSale, refreshAllData } = useData()
+  const { sales, loading, addSale, addBolo, refreshAllData } = useData()
   const [cart, setCart] = useState([])
   const [showBoloForm, setShowBoloForm] = useState(false)
   const [editingBolo, setEditingBolo] = useState(null)
@@ -72,45 +72,80 @@ const SalesControl = () => {
   }
 
   // Adicionar bolo ao cardápio
-  const handleAddBolo = (e) => {
+  const handleAddBolo = async (e) => {
     e.preventDefault()
     
     if (!boloForm.nome.trim()) {
       alert('Nome do bolo é obrigatório.')
-        return
-      }
+      return
+    }
 
     if (!boloForm.preco_por_kg || boloForm.preco_por_kg <= 0) {
       alert('Preço por kg deve ser maior que zero.')
       return
     }
 
-    const newBolo = {
-      id: Date.now(),
-      ...boloForm,
-      preco_por_kg: Number(boloForm.preco_por_kg),
-      disponivel: true,
-      created_at: new Date().toISOString()
-    }
+    try {
+      if (editingBolo) {
+        // Editar bolo existente (apenas localmente por enquanto)
+        const updatedBolo = {
+          ...editingBolo,
+          ...boloForm,
+          preco_por_kg: Number(boloForm.preco_por_kg)
+        }
+        const updatedBolos = bolos.map(b => b.id === editingBolo.id ? updatedBolo : b)
+        saveBolos(updatedBolos)
+        setEditingBolo(null)
+      } else {
+        // Adicionar novo bolo - tentar salvar no Supabase primeiro
+        const boloData = {
+          nome: boloForm.nome,
+          descricao: boloForm.descricao,
+          preco_por_kg: Number(boloForm.preco_por_kg),
+          categoria: boloForm.categoria
+        }
 
-    if (editingBolo) {
-      // Editar bolo existente
-      const updatedBolos = bolos.map(b => b.id === editingBolo.id ? newBolo : b)
-      saveBolos(updatedBolos)
-      setEditingBolo(null)
+        const { data: boloInserido, error } = await addBolo(boloData)
+        
+        if (error) {
+          console.log('⚠️ Erro ao salvar bolo no Supabase, salvando localmente')
+          // Se der erro, salvar localmente
+          const newBolo = {
+            id: Date.now(),
+            ...boloForm,
+            preco_por_kg: Number(boloForm.preco_por_kg),
+            disponivel: true,
+            created_at: new Date().toISOString()
+          }
+          saveBolos([...bolos, newBolo])
         } else {
-      // Adicionar novo bolo
-      saveBolos([...bolos, newBolo])
-    }
+          // Se salvou no Supabase, usar os dados retornados
+          const newBolo = {
+            id: boloInserido.id,
+            nome: boloInserido.nome,
+            descricao: boloInserido.descricao,
+            preco_por_kg: boloInserido.preco_por_kg,
+            categoria: boloInserido.categoria,
+            disponivel: boloInserido.disponibilidade,
+            created_at: boloInserido.created_at
+          }
+          saveBolos([...bolos, newBolo])
+          console.log('✅ Bolo salvo no Supabase:', boloInserido.nome)
+        }
+      }
 
-    // Limpar formulário
-    setBoloForm({
-      nome: '',
-      descricao: '',
-      preco_por_kg: '',
-      categoria: 'Tradicional'
-    })
-    setShowBoloForm(false)
+      // Limpar formulário
+      setBoloForm({
+        nome: '',
+        descricao: '',
+        preco_por_kg: '',
+        categoria: 'Tradicional'
+      })
+      setShowBoloForm(false)
+    } catch (error) {
+      console.error('Erro ao adicionar bolo:', error)
+      alert('Erro ao adicionar bolo. Tente novamente.')
+    }
   }
 
   // Editar bolo
