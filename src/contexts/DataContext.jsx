@@ -27,36 +27,8 @@ export const DataProvider = ({ children }) => {
     setSales([])
   }
 
-  // Dados mock para garantir funcionamento
-  const mockProducts = [
-    {
-      id: 1,
-      nome: 'Bolo de Chocolate',
-      descricao: 'Delicioso bolo de chocolate',
-      preco: 25.50,
-      valor_unit: 25.50,
-      estoque: 10,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 2,
-      nome: 'Bolo de Morango',
-      descricao: 'Bolo de morango com creme',
-      preco: 30.00,
-      valor_unit: 30.00,
-      estoque: 5,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 3,
-      nome: 'Bolo de Cenoura',
-      descricao: 'Bolo de cenoura com cobertura',
-      preco: 28.00,
-      valor_unit: 28.00,
-      estoque: 8,
-      created_at: new Date().toISOString()
-    }
-  ]
+  // Dados mock para garantir funcionamento (apenas se não houver dados do Supabase)
+  const mockProducts = []
 
   const mockMovements = [
     {
@@ -94,27 +66,22 @@ export const DataProvider = ({ children }) => {
 
     try {
       setLoading(true)
-      console.log('🔄 Buscando produtos...')
+      console.log('🔄 Buscando produtos do Supabase...')
       
-      // Usar dados mock para garantir funcionamento
-      setProducts(mockProducts)
-      
-      // Tentar buscar do Supabase em background (sem bloquear)
-      setTimeout(async () => {
-        try {
-          const { data, error } = await supabase
-            .from('bolos')
-            .select('*')
-            .limit(3)
+      // Buscar produtos reais do Supabase
+      const { data, error } = await supabase
+        .from('bolos')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-          if (!error && data) {
-            console.log('✅ Produtos carregados do Supabase:', data.length, 'itens')
-            setProducts(data)
-          }
-        } catch (networkError) {
-          console.log('⚠️ Erro de rede, mantendo dados mock')
-        }
-      }, 1000)
+      if (error) {
+        console.error('❌ Erro ao buscar produtos:', error)
+        setProducts(mockProducts)
+      } else {
+        console.log('✅ Produtos carregados do Supabase:', data?.length || 0, 'itens')
+        setProducts(data || [])
+      }
       
     } catch (error) {
       console.error('❌ Erro crítico:', error)
@@ -201,18 +168,27 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      // Criar produto localmente primeiro
-      const newProduct = {
-        id: Date.now(),
-        ...productData,
-        user_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      // Salvar no Supabase
+      const { data, error } = await supabase
+        .from('bolos')
+        .insert([{
+          ...productData,
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+
+      if (error) {
+        console.error('❌ Erro ao salvar produto no Supabase:', error)
+        return { data: null, error }
       }
-      
-      // Atualizar lista local imediatamente
+
+      // Atualizar lista local
+      const newProduct = data[0]
       setProducts(prev => [newProduct, ...prev])
       
+      console.log('✅ Produto adicionado:', newProduct.nome)
       return { data: newProduct, error: null }
     } catch (error) {
       console.error('Erro ao adicionar produto:', error)
@@ -225,15 +201,27 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      // Atualizar localmente primeiro
-      const updatedProduct = {
-        ...productData,
-        id,
-        updated_at: new Date().toISOString()
+      // Atualizar no Supabase
+      const { data, error } = await supabase
+        .from('bolos')
+        .update({
+          ...productData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+
+      if (error) {
+        console.error('❌ Erro ao atualizar produto no Supabase:', error)
+        return { data: null, error }
       }
-      
+
+      // Atualizar lista local
+      const updatedProduct = data[0]
       setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p))
       
+      console.log('✅ Produto atualizado:', updatedProduct.nome)
       return { data: updatedProduct, error: null }
     } catch (error) {
       console.error('Erro ao atualizar produto:', error)
@@ -246,9 +234,22 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      // Deletar localmente primeiro
+      // Deletar no Supabase
+      const { error } = await supabase
+        .from('bolos')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('❌ Erro ao deletar produto no Supabase:', error)
+        return { error }
+      }
+
+      // Atualizar lista local
       setProducts(prev => prev.filter(p => p.id !== id))
       
+      console.log('✅ Produto deletado com sucesso')
       return { error: null }
     } catch (error) {
       console.error('Erro ao deletar produto:', error)
