@@ -1,46 +1,35 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
-import SaleForm from './SaleForm'
 import { 
   ShoppingCart, 
   Plus, 
   Minus, 
   Trash2, 
-  Edit,
-  CreditCard, 
-  Calendar, 
-  User, 
-  Phone, 
-  Mail, 
   DollarSign,
   CheckCircle,
-  AlertCircle,
-  Clock,
-  X,
-  BarChart3
+  Package,
+  User,
+  Phone,
+  Mail,
+  CreditCard
 } from 'lucide-react'
 
 const SalesControl = () => {
   const { user } = useAuth()
   const { products, sales, loading, addSale, refreshAllData } = useData()
-  const [showSaleForm, setShowSaleForm] = useState(false)
-  const [editingSale, setEditingSale] = useState(null)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
   const [cart, setCart] = useState([])
   const [saleData, setSaleData] = useState({
     cliente_nome: '',
     cliente_email: '',
     cliente_telefone: '',
     metodo_pagamento: 'vista',
-    data_vencimento: '',
-    desconto: 0,
     observacoes: ''
   })
 
   useEffect(() => {
     // Carregar dados se não tiver
-    if (products.length === 0 || sales.length === 0) {
+    if (products.length === 0) {
       refreshAllData()
     }
   }, [])
@@ -125,8 +114,6 @@ const SalesControl = () => {
         cliente_email: '',
         cliente_telefone: '',
         metodo_pagamento: 'vista',
-        data_vencimento: '',
-        desconto: 0,
         observacoes: ''
       })
 
@@ -135,16 +122,6 @@ const SalesControl = () => {
       console.error('Erro ao finalizar venda:', error)
       alert('Erro ao finalizar venda. Tente novamente.')
     }
-  }
-
-  // Limpar carrinho
-  const clearCart = () => {
-    setCart([])
-  }
-
-  // Formatar data
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR')
   }
 
   // Formatar valor
@@ -214,7 +191,7 @@ const SalesControl = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <BarChart3 size={24} style={{ marginBottom: '0.5rem' }} />
+          <ShoppingCart size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {sales.length}
           </div>
@@ -240,7 +217,7 @@ const SalesControl = () => {
         </div>
       </div>
 
-      {/* Carrinho de Compras */}
+      {/* Dados da Venda */}
       <div style={{
         background: 'white',
         borderRadius: '12px',
@@ -258,175 +235,7 @@ const SalesControl = () => {
           alignItems: 'center',
           gap: '0.5rem'
         }}>
-          <ShoppingCart size={24} />
-          Carrinho de Compras
-        </h2>
-
-        {cart.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '2rem',
-            color: '#64748b'
-          }}>
-            <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-            <p>Carrinho vazio. Adicione produtos para começar uma venda.</p>
-          </div>
-        ) : (
-          <div>
-            {cart.map(item => (
-              <div key={item.id} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '1rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                marginBottom: '0.5rem',
-                background: '#f8fafc'
-              }}>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>
-                    {item.nome}
-                  </h3>
-                  <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
-                    {formatCurrency(item.preco || item.valor_unit || 0)} cada
-                  </p>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                    <button
-                      onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                      style={{
-                        background: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.5rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Minus size={16} />
-                    </button>
-                    
-                    <span style={{
-                      minWidth: '2rem',
-                      textAlign: 'center',
-                      fontWeight: '600',
-                      color: '#1e293b'
-                    }}>
-                      {item.quantity}
-                    </span>
-                    
-                    <button
-                      onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                      style={{
-                        background: '#10b981',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.5rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-                  
-                  <div style={{
-                    minWidth: '100px',
-                    textAlign: 'right',
-                    fontWeight: '600',
-                    color: '#1e293b'
-                  }}>
-                    {formatCurrency((item.preco || item.valor_unit || 0) * item.quantity)}
-                  </div>
-                  
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    style={{
-                      background: '#ef4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '0.5rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '1rem',
-              paddingTop: '1rem',
-              borderTop: '2px solid #e2e8f0'
-            }}>
-              <button
-                onClick={clearCart}
-                style={{
-                  background: '#64748b',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '0.75rem 1.5rem',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: '500'
-                }}
-              >
-                Limpar Carrinho
-              </button>
-              
-              <div style={{
-                fontSize: '1.5rem',
-                fontWeight: '700',
-                color: '#1e293b'
-              }}>
-                Total: {formatCurrency(getCartTotal())}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Dados da Venda */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        marginBottom: '2rem',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e2e8f0'
-      }}>
-        <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: '600',
-          color: '#1e293b',
-          margin: '0 0 1rem 0'
-        }}>
+          <User size={24} />
           Dados da Venda
         </h2>
         
@@ -576,35 +385,176 @@ const SalesControl = () => {
         </div>
       </div>
 
-      {/* Botão Finalizar Venda */}
+      {/* Carrinho de Compras */}
       <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '1rem',
-        marginBottom: '2rem'
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e2e8f0'
       }}>
-        <button
-          onClick={handleFinalizeSale}
-          disabled={cart.length === 0}
-          style={{
-            background: cart.length === 0 ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            padding: '1rem 2rem',
-            fontSize: '1.1rem',
-            fontWeight: '600',
-            cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            transition: 'all 0.2s',
-            opacity: cart.length === 0 ? 0.6 : 1
-          }}
-        >
-          <CheckCircle size={20} />
-          Finalizar Venda
-        </button>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '600',
+          color: '#1e293b',
+          margin: '0 0 1rem 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <ShoppingCart size={24} />
+          Carrinho de Compras
+        </h2>
+
+        {cart.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '2rem',
+            color: '#64748b'
+          }}>
+            <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <p>Carrinho vazio. Adicione produtos para começar uma venda.</p>
+          </div>
+        ) : (
+          <div>
+            {cart.map(item => (
+              <div key={item.id} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                marginBottom: '0.5rem',
+                background: '#f8fafc'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>
+                    {item.nome}
+                  </h3>
+                  <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
+                    {formatCurrency(item.preco || item.valor_unit || 0)} cada
+                  </p>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <button
+                      onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                      style={{
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.5rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Minus size={16} />
+                    </button>
+                    
+                    <span style={{
+                      minWidth: '2rem',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#1e293b'
+                    }}>
+                      {item.quantity}
+                    </span>
+                    
+                    <button
+                      onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                      style={{
+                        background: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.5rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  
+                  <div style={{
+                    minWidth: '100px',
+                    textAlign: 'right',
+                    fontWeight: '600',
+                    color: '#1e293b'
+                  }}>
+                    {formatCurrency((item.preco || item.valor_unit || 0) * item.quantity)}
+                  </div>
+                  
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    style={{
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '0.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '1rem',
+              paddingTop: '1rem',
+              borderTop: '2px solid #e2e8f0'
+            }}>
+              <button
+                onClick={() => setCart([])}
+                style={{
+                  background: '#64748b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '500'
+                }}
+              >
+                Limpar Carrinho
+              </button>
+              
+              <div style={{
+                fontSize: '1.5rem',
+                fontWeight: '700',
+                color: '#1e293b'
+              }}>
+                Total: {formatCurrency(getCartTotal())}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Lista de Produtos */}
@@ -620,8 +570,12 @@ const SalesControl = () => {
           fontSize: '1.5rem',
           fontWeight: '600',
           color: '#1e293b',
-          margin: '0 0 1rem 0'
+          margin: '0 0 1rem 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
         }}>
+          <Package size={24} />
           Produtos Disponíveis
         </h2>
         
@@ -633,6 +587,22 @@ const SalesControl = () => {
           }}>
             <Package size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
             <p>Nenhum produto cadastrado.</p>
+            <button
+              onClick={refreshAllData}
+              style={{
+                marginTop: '1rem',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.75rem 1.5rem',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '500'
+              }}
+            >
+              Carregar Dados
+            </button>
           </div>
         ) : (
           <div style={{
@@ -716,6 +686,37 @@ const SalesControl = () => {
         )}
       </div>
 
+      {/* Botão Finalizar Venda */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '1rem',
+        marginBottom: '2rem'
+      }}>
+        <button
+          onClick={handleFinalizeSale}
+          disabled={cart.length === 0}
+          style={{
+            background: cart.length === 0 ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '1rem 2rem',
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.2s',
+            opacity: cart.length === 0 ? 0.6 : 1
+          }}
+        >
+          <CheckCircle size={20} />
+          Finalizar Venda
+        </button>
+      </div>
+
       {/* Histórico de Vendas */}
       <div style={{
         background: 'white',
@@ -773,7 +774,7 @@ const SalesControl = () => {
                       color: '#64748b',
                       fontSize: '0.9rem'
                     }}>
-                      {formatDate(sale.created_at)}
+                      {new Date(sale.created_at).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                   

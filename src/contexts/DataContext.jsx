@@ -400,7 +400,6 @@ export const DataProvider = ({ children }) => {
     deleteProduct,
     addMovement,
     addSale,
-    refreshAllData,
     clearAllData
   }
 
