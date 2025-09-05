@@ -14,13 +14,18 @@ import {
   CreditCard,
   Cake,
   Scale,
-  Package
+  Package,
+  Edit,
+  Save
 } from 'lucide-react'
 
 const SalesControl = () => {
   const { user } = useAuth()
-  const { products, sales, loading, addSale, refreshAllData } = useData()
+  const { sales, loading, addSale, refreshAllData } = useData()
   const [cart, setCart] = useState([])
+  const [showBoloForm, setShowBoloForm] = useState(false)
+  const [editingBolo, setEditingBolo] = useState(null)
+  const [bolos, setBolos] = useState([])
   const [saleData, setSaleData] = useState({
     cliente_nome: '',
     cliente_email: '',
@@ -28,49 +33,141 @@ const SalesControl = () => {
     metodo_pagamento: 'vista',
     observacoes: ''
   })
+  const [boloForm, setBoloForm] = useState({
+    nome: '',
+    descricao: '',
+    preco_por_kg: '',
+    categoria: 'Tradicional'
+  })
+
+  // Categorias de bolos
+  const categorias = [
+    'Tradicional',
+    'Chocolate', 
+    'Frutas',
+    'Especial',
+    'Cítrico',
+    'Red Velvet',
+    'Coco',
+    'Cenoura'
+  ]
 
   useEffect(() => {
     // Carregar dados se não tiver
-    if (products.length === 0) {
+    if (sales.length === 0) {
       refreshAllData()
+    }
+    
+    // Carregar bolos do localStorage
+    const savedBolos = localStorage.getItem('bolos')
+    if (savedBolos) {
+      setBolos(JSON.parse(savedBolos))
     }
   }, [])
 
-  // Adicionar produto ao carrinho
-  const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id)
+  // Salvar bolos no localStorage
+  const saveBolos = (newBolos) => {
+    setBolos(newBolos)
+    localStorage.setItem('bolos', JSON.stringify(newBolos))
+  }
+
+  // Adicionar bolo ao cardápio
+  const handleAddBolo = (e) => {
+    e.preventDefault()
+    
+    if (!boloForm.nome.trim()) {
+      alert('Nome do bolo é obrigatório.')
+      return
+    }
+
+    if (!boloForm.preco_por_kg || boloForm.preco_por_kg <= 0) {
+      alert('Preço por kg deve ser maior que zero.')
+      return
+    }
+
+    const newBolo = {
+      id: Date.now(),
+      ...boloForm,
+      preco_por_kg: Number(boloForm.preco_por_kg),
+      disponivel: true,
+      created_at: new Date().toISOString()
+    }
+
+    if (editingBolo) {
+      // Editar bolo existente
+      const updatedBolos = bolos.map(b => b.id === editingBolo.id ? newBolo : b)
+      saveBolos(updatedBolos)
+      setEditingBolo(null)
+    } else {
+      // Adicionar novo bolo
+      saveBolos([...bolos, newBolo])
+    }
+
+    // Limpar formulário
+    setBoloForm({
+      nome: '',
+      descricao: '',
+      preco_por_kg: '',
+      categoria: 'Tradicional'
+    })
+    setShowBoloForm(false)
+  }
+
+  // Editar bolo
+  const handleEditBolo = (bolo) => {
+    setBoloForm({
+      nome: bolo.nome,
+      descricao: bolo.descricao,
+      preco_por_kg: bolo.preco_por_kg,
+      categoria: bolo.categoria
+    })
+    setEditingBolo(bolo)
+    setShowBoloForm(true)
+  }
+
+  // Excluir bolo
+  const handleDeleteBolo = (boloId) => {
+    if (confirm('Tem certeza que deseja excluir este bolo?')) {
+      const updatedBolos = bolos.filter(b => b.id !== boloId)
+      saveBolos(updatedBolos)
+    }
+  }
+
+  // Adicionar bolo ao carrinho
+  const addToCart = (bolo) => {
+    const existingItem = cart.find(item => item.id === bolo.id)
     
     if (existingItem) {
       setCart(cart.map(item => 
-        item.id === product.id 
+        item.id === bolo.id 
           ? { ...item, peso: item.peso + 0.5 }
           : item
       ))
     } else {
       setCart([...cart, { 
-        ...product, 
+        ...bolo, 
         peso: 0.5,
-        preco_total: (product.valor_unit || 0) * 0.5
+        preco_total: bolo.preco_por_kg * 0.5
       }])
     }
   }
 
-  // Remover produto do carrinho
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.id !== productId))
+  // Remover bolo do carrinho
+  const removeFromCart = (boloId) => {
+    setCart(cart.filter(item => item.id !== boloId))
   }
 
   // Atualizar peso no carrinho
-  const updateCartWeight = (productId, peso) => {
+  const updateCartWeight = (boloId, peso) => {
     if (peso <= 0) {
-      removeFromCart(productId)
+      removeFromCart(boloId)
     } else {
       setCart(cart.map(item => 
-        item.id === productId 
+        item.id === boloId 
           ? { 
               ...item, 
               peso,
-              preco_total: (item.valor_unit || 0) * peso
+              preco_total: item.preco_por_kg * peso
             }
           : item
       ))
@@ -85,7 +182,7 @@ const SalesControl = () => {
   // Finalizar venda
   const handleFinalizeSale = async () => {
     if (cart.length === 0) {
-      alert('Adicione produtos ao carrinho antes de finalizar a venda.')
+      alert('Adicione bolos ao carrinho antes de finalizar a venda.')
       return
     }
 
@@ -103,7 +200,7 @@ const SalesControl = () => {
           produto_id: item.id,
           nome: item.nome,
           peso: item.peso,
-          preco_por_kg: item.valor_unit || 0,
+          preco_por_kg: item.preco_por_kg,
           preco_total: item.preco_total
         })),
         created_at: new Date().toISOString()
@@ -150,7 +247,7 @@ const SalesControl = () => {
         fontSize: '1.2rem',
         color: '#666'
       }}>
-        Carregando produtos...
+        Carregando vendas...
       </div>
     )
   }
@@ -177,12 +274,33 @@ const SalesControl = () => {
             gap: '0.5rem'
           }}>
             <Cake size={32} />
-            Vendas de Produtos
+            Vendas de Bolos
           </h1>
           <p style={{ color: '#64748b', margin: '0.5rem 0 0 0' }}>
-            Cadastre produtos manualmente e realize vendas
+            Cadastre bolos e realize vendas por peso
           </p>
         </div>
+        
+        <button
+          onClick={() => setShowBoloForm(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem 1.5rem',
+            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '0.9rem',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          <Plus size={16} />
+          Cadastrar Bolo
+        </button>
       </div>
 
       {/* Estatísticas */}
@@ -231,12 +349,12 @@ const SalesControl = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <Package size={24} style={{ marginBottom: '0.5rem' }} />
+          <Cake size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
-            {products.length}
+            {bolos.length}
           </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-            Produtos Cadastrados
+            Bolos Cadastrados
           </div>
         </div>
       </div>
@@ -428,7 +546,7 @@ const SalesControl = () => {
           gap: '0.5rem'
         }}>
           <ShoppingCart size={24} />
-          Carrinho de Produtos
+          Carrinho de Bolos
         </h2>
 
         {cart.length === 0 ? (
@@ -438,7 +556,7 @@ const SalesControl = () => {
             color: '#64748b'
           }}>
             <Cake size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-            <p>Carrinho vazio. Escolha produtos do catálogo abaixo.</p>
+            <p>Carrinho vazio. Escolha bolos do cardápio abaixo.</p>
           </div>
         ) : (
           <div>
@@ -458,7 +576,7 @@ const SalesControl = () => {
                     {item.nome}
                   </h3>
                   <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
-                    {formatCurrency(item.valor_unit || 0)} por kg
+                    {formatCurrency(item.preco_por_kg)} por kg
                   </p>
                 </div>
                 
@@ -581,7 +699,7 @@ const SalesControl = () => {
         )}
       </div>
 
-      {/* Catálogo de Produtos */}
+      {/* Cardápio de Bolos */}
       <div style={{
         background: 'white',
         borderRadius: '12px',
@@ -599,18 +717,18 @@ const SalesControl = () => {
           alignItems: 'center',
           gap: '0.5rem'
         }}>
-          <Package size={24} />
-          Catálogo de Produtos
+          <Cake size={24} />
+          Cardápio de Bolos
         </h2>
         
-        {products.length === 0 ? (
+        {bolos.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '2rem',
             color: '#64748b'
           }}>
-            <Package size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-            <p>Nenhum produto cadastrado. Vá para a página de produtos para cadastrar.</p>
+            <Cake size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <p>Nenhum bolo cadastrado. Clique em "Cadastrar Bolo" para começar.</p>
           </div>
         ) : (
           <div style={{
@@ -618,28 +736,74 @@ const SalesControl = () => {
             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
             gap: '1rem'
           }}>
-            {products.map(product => (
-              <div key={product.id} style={{
+            {bolos.map(bolo => (
+              <div key={bolo.id} style={{
                 border: '1px solid #e2e8f0',
                 borderRadius: '8px',
                 padding: '1rem',
                 background: '#f8fafc',
                 transition: 'all 0.2s'
               }}>
-                <h3 style={{
-                  margin: '0 0 0.5rem 0',
-                  fontSize: '1.1rem',
-                  color: '#1e293b'
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '0.5rem'
                 }}>
-                  {product.nome}
-                </h3>
+                  <h3 style={{
+                    margin: 0,
+                    fontSize: '1.1rem',
+                    color: '#1e293b',
+                    flex: 1
+                  }}>
+                    {bolo.nome}
+                  </h3>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => handleEditBolo(bolo)}
+                      style={{
+                        background: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '0.25rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Editar bolo"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    
+                    <button
+                      onClick={() => handleDeleteBolo(bolo.id)}
+                      style={{
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '0.25rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Excluir bolo"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
                 
                 <p style={{
                   margin: '0 0 0.5rem 0',
                   color: '#64748b',
                   fontSize: '0.9rem'
                 }}>
-                  Estoque: {product.quantidade || 0} unidades
+                  {bolo.descricao}
                 </p>
                 
                 <div style={{
@@ -653,7 +817,7 @@ const SalesControl = () => {
                     fontWeight: '600',
                     color: '#059669'
                   }}>
-                    {formatCurrency(product.valor_unit || 0)}/kg
+                    {formatCurrency(bolo.preco_por_kg)}/kg
                   </div>
                   
                   <div style={{
@@ -663,40 +827,31 @@ const SalesControl = () => {
                     padding: '0.25rem 0.5rem',
                     borderRadius: '4px'
                   }}>
-                    Produto
+                    {bolo.categoria}
                   </div>
                 </div>
                 
                 <button
-                  onClick={() => addToCart(product)}
-                  disabled={!product.quantidade || product.quantidade <= 0}
+                  onClick={() => addToCart(bolo)}
                   style={{
                     width: '100%',
-                    background: (!product.quantidade || product.quantidade <= 0) 
-                      ? '#9ca3af' 
-                      : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '0.75rem',
                     fontSize: '0.9rem',
                     fontWeight: '500',
-                    cursor: (!product.quantidade || product.quantidade <= 0) 
-                      ? 'not-allowed' 
-                      : 'pointer',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
-                    transition: 'all 0.2s',
-                    opacity: (!product.quantidade || product.quantidade <= 0) ? 0.6 : 1
+                    transition: 'all 0.2s'
                   }}
                 >
                   <Plus size={16} />
-                  {(!product.quantidade || product.quantidade <= 0) 
-                    ? 'Sem Estoque' 
-                    : 'Adicionar ao Carrinho'
-                  }
+                  Adicionar ao Carrinho
                 </button>
               </div>
             ))}
@@ -831,6 +986,243 @@ const SalesControl = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de Cadastro de Bolo */}
+      {showBoloForm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: '#1e293b',
+                margin: 0
+              }}>
+                {editingBolo ? 'Editar Bolo' : 'Cadastrar Bolo'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowBoloForm(false)
+                  setEditingBolo(null)
+                  setBoloForm({
+                    nome: '',
+                    descricao: '',
+                    preco_por_kg: '',
+                    categoria: 'Tradicional'
+                  })
+                }}
+                style={{
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddBolo} style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  Nome do Bolo *
+                </label>
+                <input
+                  type="text"
+                  value={boloForm.nome}
+                  onChange={(e) => setBoloForm({...boloForm, nome: e.target.value})}
+                  placeholder="Ex: Bolo de Chocolate"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  Descrição
+                </label>
+                <textarea
+                  value={boloForm.descricao}
+                  onChange={(e) => setBoloForm({...boloForm, descricao: e.target.value})}
+                  placeholder="Descrição do bolo..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  Preço por Kg *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={boloForm.preco_por_kg}
+                  onChange={(e) => setBoloForm({...boloForm, preco_por_kg: e.target.value})}
+                  placeholder="0.00"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  Categoria
+                </label>
+                <select
+                  value={boloForm.categoria}
+                  onChange={(e) => setBoloForm({...boloForm, categoria: e.target.value})}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    background: 'white'
+                  }}
+                >
+                  {categorias.map(categoria => (
+                    <option key={categoria} value={categoria}>
+                      {categoria}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '1rem'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBoloForm(false)
+                    setEditingBolo(null)
+                    setBoloForm({
+                      nome: '',
+                      descricao: '',
+                      preco_por_kg: '',
+                      categoria: 'Tradicional'
+                    })
+                  }}
+                  style={{
+                    background: '#64748b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+                
+                <button
+                  type="submit"
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Save size={16} />
+                  {editingBolo ? 'Atualizar' : 'Cadastrar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
