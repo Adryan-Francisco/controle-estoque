@@ -3,8 +3,6 @@ import Login from './Login'
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth()
-  
-  console.log('ProtectedRoute - loading:', loading, 'user:', user?.email || 'Nenhum usuário')
 
   if (loading) {
     return (

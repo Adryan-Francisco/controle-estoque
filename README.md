@@ -1,218 +1,84 @@
-# 🍰 Sistema de Controle de Estoque para Bolos
+# Sistema de Controle de Estoque
 
-Um sistema completo de gestão de estoque e vendas desenvolvido com React, Vite e Supabase, especificamente otimizado para confeitarias e padarias.
+Um sistema moderno e responsivo para controle de estoque desenvolvido com React e Supabase.
 
-## ✨ Funcionalidades
+## 🚀 Funcionalidades
 
-### 🔐 Autenticação
-- Login seguro com Supabase Auth
-- Proteção de rotas
-- Gerenciamento de sessão
+- **Autenticação de Usuários**: Login seguro com Supabase Auth
+- **Gestão de Produtos**: Cadastro, edição e exclusão de produtos
+- **Controle de Estoque**: Entrada e saída de produtos com histórico
+- **Relatórios**: Dashboard com estatísticas e relatórios de movimentação
+- **Isolamento de Dados**: Cada usuário vê apenas seus próprios dados
+- **Interface Moderna**: Design responsivo com Tailwind CSS
 
-### 📊 Dashboard
-- Visão geral das vendas
-- Estatísticas em tempo real
-- Cards informativos interativos
+## 🛠️ Tecnologias
 
-### 🍰 Gestão de Produtos
-- Cadastro de bolos e produtos
-- Controle de estoque
-- Categorização de produtos
-- Preços fixos e por quilo
-
-### 💰 Controle de Vendas
-- Registro de vendas
-- Cálculo automático de totais
-- Gestão de clientes
-- Histórico de vendas
-
-### 📈 Relatórios Avançados
-- Análises de vendas por período
-- Gráficos interativos
-- Exportação para PDF e Excel
-- Métricas de performance
-
-### 🔔 Sistema de Notificações
-- Alertas de estoque baixo
-- Notificações de movimentações
-- Avisos de vendas
-- Interface responsiva
-
-## 🚀 Tecnologias
-
-- **Frontend**: React 18 + Vite
-- **Backend**: Supabase
-- **Estilização**: CSS Modules + Tailwind
-- **Ícones**: Lucide React
+- **Frontend**: React 18, Vite, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Real-time)
 - **Deploy**: GitHub Pages
 
-## 🛠️ Instalação
+## 📦 Instalação
 
-### Pré-requisitos
-- Node.js 18+
-- Conta no Supabase
-- Git
-
-### Passos
-
-1. **Clone o repositório**
+1. Clone o repositório:
 ```bash
-git clone https://github.com/SEU_USUARIO/controle-estoque-vendas.git
-cd controle-estoque-vendas
+git clone https://github.com/seu-usuario/controle-estoque.git
+cd controle-estoque
 ```
 
-2. **Instale as dependências**
+2. Instale as dependências:
 ```bash
 npm install
 ```
 
-3. **Configure as variáveis de ambiente**
+3. Configure as variáveis de ambiente:
 ```bash
-# Crie um arquivo .env.local
-VITE_SUPABASE_URL=sua_url_do_supabase
-VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
+cp .env.example .env.local
 ```
 
-4. **Execute o projeto**
+4. Configure o Supabase:
+   - Crie um projeto no [Supabase](https://supabase.com)
+   - Configure as tabelas necessárias
+   - Adicione as credenciais no arquivo `.env.local`
+
+5. Execute o projeto:
 ```bash
 npm run dev
 ```
 
-## 🗄️ Configuração do Banco de Dados
+## 🗄️ Estrutura do Banco de Dados
 
-Execute os scripts SQL no Supabase:
+### Tabelas Necessárias:
 
-1. Acesse o Supabase Dashboard
-2. Vá em SQL Editor
-3. Execute o script `setup-complete-database-fixed.sql`
+- **bolos**: Produtos do estoque
+- **movimentacoes**: Histórico de entradas e saídas
+- **vendas**: Registro de vendas
 
-### Tabelas Criadas:
-- `bolos` - Produtos/bolos
-- `vendas` - Registro de vendas
-- `venda_itens` - Itens das vendas
-- `movimentacoes` - Controle de estoque
+## 🚀 Deploy
 
-## 🌐 Deploy
+O projeto está configurado para deploy automático no GitHub Pages:
 
-### GitHub Pages (Automático)
+1. Faça push para a branch `main`
+2. O GitHub Actions fará o build e deploy automaticamente
+3. Acesse: `https://seu-usuario.github.io/controle-estoque`
 
-1. **Configure o repositório remoto**
-```bash
-git remote add origin https://github.com/SEU_USUARIO/controle-estoque-vendas.git
-```
+## 📱 Screenshots
 
-2. **Configure as variáveis de ambiente no GitHub**
-   - Vá em Settings > Secrets and variables > Actions
-   - Adicione `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`
-
-3. **Ative o GitHub Pages**
-   - Vá em Settings > Pages
-   - Selecione "GitHub Actions" como source
-
-4. **Faça push**
-```bash
-git push origin main
-```
-
-O deploy será automático! 🚀
-
-## 📱 Interface
-
-### Desktop
-- Dashboard completo com métricas
-- Tabelas responsivas
-- Gráficos interativos
-- Navegação intuitiva
-
-### Mobile
-- Interface adaptativa
-- Menu hambúrguer
-- Cards otimizados
-- Touch-friendly
-
-## 🔧 Scripts Disponíveis
-
-```bash
-# Desenvolvimento
-npm run dev
-
-# Build para produção
-npm run build
-
-# Preview do build
-npm run preview
-
-# Lint
-npm run lint
-```
-
-## 📊 Estrutura do Projeto
-
-```
-src/
-├── components/          # Componentes React
-│   ├── Dashboard.jsx
-│   ├── Header.jsx
-│   ├── ProductsPage.jsx
-│   ├── SalesControl.jsx
-│   └── SalesReports.jsx
-├── contexts/            # Contextos React
-│   ├── AuthContext.jsx
-│   └── NotificationContext.jsx
-├── lib/                 # Configurações
-│   └── supabase.js
-└── main.jsx            # Ponto de entrada
-```
-
-## 🎯 Funcionalidades Principais
-
-### Sistema de Notificações
-- ✅ Alertas de estoque em tempo real
-- ✅ Notificações de vendas
-- ✅ Avisos de movimentações
-- ✅ Interface de notificações interativa
-
-### Relatórios Avançados
-- ✅ Gráficos de vendas por período
-- ✅ Análise de produtos mais vendidos
-- ✅ Métricas de performance
-- ✅ Exportação para PDF/Excel
-
-### Gestão de Estoque
-- ✅ Controle de entrada e saída
-- ✅ Alertas de estoque baixo
-- ✅ Histórico de movimentações
-- ✅ Cálculos automáticos
+![Dashboard](screenshots/dashboard.png)
+![Produtos](screenshots/produtos.png)
+![Movimentações](screenshots/movimentacoes.png)
 
 ## 🤝 Contribuição
 
 1. Fork o projeto
-2. Crie uma branch para sua feature
-3. Commit suas mudanças
-4. Push para a branch
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
-## 🆘 Suporte
+## 👨‍💻 Autor
 
-Se encontrar algum problema:
-
-1. Verifique se todas as dependências estão instaladas
-2. Confirme se as variáveis de ambiente estão configuradas
-3. Verifique se o Supabase está funcionando
-4. Abra uma issue no GitHub
-
-## 🌟 Destaques
-
-- **100% Responsivo** - Funciona em qualquer dispositivo
-- **Tempo Real** - Dados atualizados automaticamente
-- **Seguro** - Autenticação e autorização robustas
-- **Escalável** - Arquitetura preparada para crescimento
-- **Moderno** - Tecnologias mais recentes do mercado
-
----
-
-**Desenvolvido com ❤️ para confeitarias e padarias**
+Desenvolvido com ❤️ para controle de estoque eficiente.

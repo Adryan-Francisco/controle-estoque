@@ -14,12 +14,12 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [previousUser, setPreviousUser] = useState(null)
 
   useEffect(() => {
     // Verificar se há uma sessão ativa
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('Sessão carregada:', session?.user?.email || 'Nenhum usuário')
       setUser(session?.user ?? null)
       setLoading(false)
     }
@@ -29,13 +29,29 @@ export const AuthProvider = ({ children }) => {
     // Escutar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
+        const newUser = session?.user ?? null
+        
+        // Se o usuário mudou (logout ou login de outro usuário)
+        if (previousUser && previousUser.id !== newUser?.id) {
+          console.log('🔄 Usuário mudou, disparando evento de limpeza de dados')
+          // Disparar evento customizado para limpeza de dados
+          window.dispatchEvent(new CustomEvent('userChanged', { 
+            detail: { 
+              previousUser, 
+              newUser,
+              action: newUser ? 'login' : 'logout'
+            } 
+          }))
+        }
+        
+        setPreviousUser(newUser)
+        setUser(newUser)
         setLoading(false)
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [previousUser])
 
   const signUp = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({
@@ -54,6 +70,13 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signOut = async () => {
+    console.log('🚪 Usuário fazendo logout, limpando dados...')
+    
+    // Disparar evento de logout para limpeza de dados
+    window.dispatchEvent(new CustomEvent('userLogout', { 
+      detail: { user } 
+    }))
+    
     const { error } = await supabase.auth.signOut()
     return { error }
   }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useData } from '../contexts/DataContext'
 import ProductForm from './ProductForm'
 import StatCard from './StatCard'
 import MovementReports from './MovementReports'
@@ -8,62 +8,30 @@ import SimpleStockMovement from './SimpleStockMovement'
 import { Package, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Settings, ArrowRight } from 'lucide-react'
 
 const Dashboard = ({ onNavigateToProducts }) => {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showStockMovement, setShowStockMovement] = useState(false)
   const [showProductSelector, setShowProductSelector] = useState(false)
   const [testProduct, setTestProduct] = useState(null)
   const [editingProduct, setEditingProduct] = useState(null)
   const { user } = useAuth()
+  const { products, loading, addProduct, updateProduct, deleteProduct, refreshAllData } = useData()
 
   useEffect(() => {
-    fetchProducts()
+    // Não precisa chamar refreshAllData aqui pois o DataContext já faz isso automaticamente
   }, [])
-
-  const fetchProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setProducts(data || [])
-    } catch (error) {
-      console.error('Erro ao buscar produtos:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSaveProduct = async (productData) => {
     try {
       if (editingProduct) {
         // Atualizar produto existente
-        const { error } = await supabase
-          .from('produtos')
-          .update({
-            ...productData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingProduct.id)
-
+        const { error } = await updateProduct(editingProduct.id, productData)
         if (error) throw error
       } else {
         // Criar novo produto
-        const { error } = await supabase
-          .from('produtos')
-          .insert([{
-            ...productData,
-            user_id: user.id,
-            created_at: new Date().toISOString()
-          }])
-
+        const { error } = await addProduct(productData)
         if (error) throw error
       }
 
-      await fetchProducts()
       setShowForm(false)
       setEditingProduct(null)
     } catch (error) {
@@ -81,13 +49,8 @@ const Dashboard = ({ onNavigateToProducts }) => {
     if (!confirm('Tem certeza que deseja excluir este produto?')) return
 
     try {
-      const { error } = await supabase
-        .from('produtos')
-        .delete()
-        .eq('id', productId)
-
+      const { error } = await deleteProduct(productId)
       if (error) throw error
-      await fetchProducts()
     } catch (error) {
       console.error('Erro ao excluir produto:', error)
       alert('Erro ao excluir produto. Tente novamente.')
@@ -484,7 +447,7 @@ const Dashboard = ({ onNavigateToProducts }) => {
           }}
           onUpdate={() => {
             console.log('Movimentação de teste atualizada')
-            fetchProducts() // Atualizar lista de produtos
+            // Não precisa chamar fetchProducts pois o DataContext já atualiza automaticamente
           }}
         />
       )}

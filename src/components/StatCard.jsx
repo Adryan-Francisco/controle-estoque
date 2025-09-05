@@ -43,7 +43,7 @@ const StatCard = ({ title, value, icon: Icon, color, description, gradient }) =>
             color: '#1e293b',
             margin: 0
           }}>
-            {value}
+            {isNaN(value) ? '0' : value}
           </p>
         </div>
         <div style={{
