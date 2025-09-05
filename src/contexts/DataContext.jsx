@@ -168,7 +168,7 @@ export const DataProvider = ({ children }) => {
     }
   ]
 
-  // Buscar produtos do usuário atual
+  // Buscar produtos do usuário atual com debounce
   const fetchProducts = async () => {
     if (!user) {
       setProducts([])
@@ -179,12 +179,26 @@ export const DataProvider = ({ children }) => {
       setLoading(true)
       console.log('🔄 Buscando produtos do Supabase...')
       
-      // Buscar produtos reais do Supabase
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      // Verificar se já temos dados recentes (evitar requisições desnecessárias)
+      const now = Date.now()
+      const lastFetch = localStorage.getItem('lastProductsFetch')
+      if (lastFetch && (now - parseInt(lastFetch)) < 30000) { // 30 segundos
+        console.log('⏭️ Pulando busca de produtos - dados recentes')
+        setLoading(false)
+        return
+      }
+
+      // Buscar produtos reais do Supabase com timeout
+      const { data, error } = await Promise.race([
+        supabase
+          .from('produtos')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 10000)
+        )
+      ])
 
       if (error) {
         console.error('❌ Erro ao buscar produtos:', error)
@@ -192,6 +206,7 @@ export const DataProvider = ({ children }) => {
       } else {
         console.log('✅ Produtos carregados do Supabase:', data?.length || 0, 'itens')
         setProducts(data || [])
+        localStorage.setItem('lastProductsFetch', now.toString())
       }
       
     } catch (error) {
@@ -202,7 +217,7 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-  // Buscar movimentações do usuário atual
+  // Buscar movimentações do usuário atual com debounce
   const fetchMovements = async () => {
     if (!user) {
       setMovements([])
@@ -212,20 +227,34 @@ export const DataProvider = ({ children }) => {
     try {
       console.log('🔄 Buscando movimentações...')
       
+      // Verificar se já temos dados recentes (evitar requisições desnecessárias)
+      const now = Date.now()
+      const lastFetch = localStorage.getItem('lastMovementsFetch')
+      if (lastFetch && (now - parseInt(lastFetch)) < 30000) { // 30 segundos
+        console.log('⏭️ Pulando busca de movimentações - dados recentes')
+        return
+      }
+      
       // Usar dados mock para garantir funcionamento
       setMovements(mockMovements)
       
-      // Tentar buscar do Supabase em background
+      // Tentar buscar do Supabase em background com timeout
       setTimeout(async () => {
         try {
-          const { data, error } = await supabase
-            .from('movimentacoes')
-            .select('*')
-            .limit(3)
+          const { data, error } = await Promise.race([
+            supabase
+              .from('movimentacoes')
+              .select('*')
+              .limit(3),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), 8000)
+            )
+          ])
 
           if (!error && data) {
             console.log('✅ Movimentações carregadas:', data.length, 'itens')
             setMovements(data)
+            localStorage.setItem('lastMovementsFetch', now.toString())
           }
         } catch (networkError) {
           console.log('⚠️ Erro de rede, mantendo dados mock')
