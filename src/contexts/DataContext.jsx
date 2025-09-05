@@ -677,40 +677,42 @@ export const DataProvider = ({ children }) => {
           .select()
       })
 
-      if (insertResult.error) {
-        console.error('❌ Erro ao salvar venda no Supabase:', insertResult.error)
-        console.error('❌ Código do erro:', insertResult.error.code)
-        console.error('❌ Mensagem do erro:', insertResult.error.message)
-        console.error('❌ Detalhes do erro:', JSON.stringify(insertResult.error, null, 2))
-        
-        // Se for erro de RLS, sempre salvar localmente
-        if (insertResult.error.code === '42501' || insertResult.error.message.includes('row-level security')) {
-          console.log('🔒 Erro de RLS detectado - salvando localmente')
-          console.log('💡 Dica: Para resolver, desative RLS na tabela vendas no Supabase ou configure políticas adequadas')
-        }
-        
-        // Se der erro no Supabase, salvar localmente mesmo assim
-        const newSale = {
-          id: Date.now(),
-          ...saleData,
-          user_id: user.id,
-          created_at: new Date().toISOString()
-        }
-        setSales(prev => [newSale, ...prev])
-        console.log('✅ Venda salva localmente (erro no Supabase)')
-        
-        // Tentar sincronizar em background (sem bloquear a interface)
-        setTimeout(async () => {
-          try {
-            console.log('🔄 Tentando sincronizar venda em background...')
-            // Aqui poderia tentar novamente ou usar uma fila de sincronização
-          } catch (syncError) {
-            console.log('⚠️ Falha na sincronização em background:', syncError.message)
-          }
-        }, 2000)
-        
-        return { data: newSale, error: null }
-      }
+                          if (insertResult.error) {
+                      console.error('❌ Erro ao salvar venda no Supabase:', insertResult.error)
+                      console.error('❌ Código do erro:', insertResult.error.code)
+                      console.error('❌ Mensagem do erro:', insertResult.error.message)
+                      console.error('❌ Detalhes do erro:', JSON.stringify(insertResult.error, null, 2))
+
+                      // Se for erro de RLS, sempre salvar localmente
+                      if (insertResult.error.code === '42501' || insertResult.error.message.includes('row-level security')) {
+                        console.log('🔒 Erro de RLS detectado - salvando localmente')
+                        console.log('💡 Dica: Para resolver, desative RLS na tabela vendas no Supabase ou configure políticas adequadas')
+                        console.log('🔧 Solução temporária: Dados salvos localmente até RLS ser configurado')
+                      }
+
+                      // Se der erro no Supabase, salvar localmente mesmo assim
+                      const newSale = {
+                        id: Date.now(),
+                        ...saleData,
+                        user_id: user.id,
+                        created_at: new Date().toISOString()
+                      }
+                      setSales(prev => [newSale, ...prev])
+                      console.log('✅ Venda salva localmente (erro no Supabase)')
+                      console.log('📊 Sistema funcionando com dados locais - RLS precisa ser configurado')
+
+                      // Tentar sincronizar em background (sem bloquear a interface)
+                      setTimeout(async () => {
+                        try {
+                          console.log('🔄 Tentando sincronizar venda em background...')
+                          // Aqui poderia tentar novamente ou usar uma fila de sincronização
+                        } catch (syncError) {
+                          console.log('⚠️ Falha na sincronização em background:', syncError.message)
+                        }
+                      }, 2000)
+
+                      return { data: newSale, error: null }
+                    }
 
       // Venda inserida com sucesso no Supabase
       const vendaInserida = insertResult.data[0]

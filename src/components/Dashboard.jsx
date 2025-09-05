@@ -6,6 +6,7 @@ import StatCard from './StatCard'
 import MovementReports from './MovementReports'
 import SimpleStockMovement from './SimpleStockMovement'
 import SupabaseTest from './SupabaseTest'
+import RLSStatusNotification from './RLSStatusNotification'
 import { Package, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Settings, ArrowRight } from 'lucide-react'
 
 const Dashboard = ({ onNavigateToProducts }) => {
@@ -610,6 +611,9 @@ const Dashboard = ({ onNavigateToProducts }) => {
           </div>
         </div>
       )}
+
+      {/* Notificação de status RLS */}
+      <RLSStatusNotification />
     </div>
   )
 }
