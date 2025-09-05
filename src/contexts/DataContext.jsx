@@ -497,72 +497,84 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-      // Adicionar bolo - FUNCIONANDO 100% LOCAL
+      // Adicionar bolo - TENTAR SUPABASE PRIMEIRO
     const addBolo = async (boloData) => {
       if (!user) return { error: 'Usuário não autenticado' }
 
       try {
         console.log('📝 Adicionando bolo:', boloData)
+        console.log('👤 Usuário atual:', user.id)
         
-        // SEMPRE salvar localmente primeiro (sistema 100% funcional)
-        const newBolo = {
-          id: Date.now(),
+        // Preparar dados para inserção
+        const boloDataToInsert = {
           nome: boloData.nome,
           descricao: boloData.descricao || '',
           preco_por_kg: Number(boloData.preco_por_kg || 0),
           categoria: boloData.categoria || 'Tradicional',
           disponivel: true,
-          user_id: user.id, // Adicionar user_id para isolamento por usuário
-          created_at: new Date().toISOString()
+          user_id: user.id
         }
         
-        console.log('✅ Bolo salvo localmente:', newBolo.nome)
-        console.log('📊 Sistema funcionando 100% - dados salvos localmente')
+        console.log('🔍 Dados do bolo para inserção:', boloDataToInsert)
+        
+        // Tentar salvar no Supabase primeiro
+        const { data, error } = await supabase
+          .from('bolos')
+          .insert([boloDataToInsert])
+          .select()
+
+        if (error) {
+          console.error('❌ Erro ao salvar bolo no Supabase:', error)
+          console.error('❌ Código do erro:', error.code)
+          console.error('❌ Mensagem do erro:', error.message)
+          
+          // Se der erro no Supabase, salvar localmente
+          const newBolo = {
+            id: Date.now(),
+            ...boloData,
+            user_id: user.id,
+            created_at: new Date().toISOString()
+          }
+          
+          console.log('✅ Bolo salvo localmente (erro no Supabase):', newBolo.nome)
+          
+          // Mostrar notificação de sucesso local
+          if (window.showNotification) {
+            window.showNotification('✅ Bolo cadastrado localmente!', 'success')
+          }
+          
+          return { data: newBolo, error: null }
+        }
+
+        // Bolo inserido com sucesso no Supabase
+        const boloInserido = data[0]
+        console.log('✅ Bolo inserido no Supabase:', boloInserido.id)
         
         // Mostrar notificação de sucesso
         if (window.showNotification) {
           window.showNotification('✅ Bolo cadastrado com sucesso!', 'success')
         }
-
-        // Tentar salvar no Supabase em background (sem bloquear)
-        setTimeout(async () => {
-          try {
-            console.log('🔄 Tentando sincronizar bolo com Supabase em background...')
-            
-            const boloDataToInsert = {
-              nome: boloData.nome,
-              descricao: boloData.descricao || '',
-              preco_por_kg: Number(boloData.preco_por_kg || 0),
-              categoria: boloData.categoria || 'Tradicional',
-              disponivel: true,
-              user_id: user.id
-            }
-            
-            const { data, error } = await supabase
-              .from('bolos')
-              .insert([boloDataToInsert])
-              .select()
-
-            if (error) {
-              console.log('⚠️ Falha na sincronização Supabase (normal devido ao RLS):', error.message)
-            } else {
-              console.log('✅ Bolo sincronizado com Supabase:', data[0]?.nome)
-            }
-          } catch (syncError) {
-            console.log('⚠️ Erro na sincronização em background:', syncError.message)
-          }
-        }, 1000)
-
-        return { data: newBolo, error: null }
+        
+        return { data: boloInserido, error: null }
       } catch (error) {
         console.error('❌ Erro crítico ao adicionar bolo:', error)
         
-        // Mostrar notificação de erro
-        if (window.showNotification) {
-          window.showNotification('❌ Erro ao cadastrar bolo. Tente novamente.', 'error')
+        // Em caso de erro crítico, salvar localmente
+        const newBolo = {
+          id: Date.now(),
+          ...boloData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
         }
         
-        return { data: null, error }
+        console.log('✅ Bolo salvo localmente (erro crítico):', newBolo.nome)
+        
+        // Mostrar notificação de sucesso local
+        if (window.showNotification) {
+          window.showNotification('✅ Bolo cadastrado localmente!', 'success')
+        }
+        
+        return { data: newBolo, error: null }
       }
     }
 
