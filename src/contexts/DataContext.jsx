@@ -198,13 +198,15 @@ export const DataProvider = ({ children }) => {
     try {
       console.log('📝 Adicionando produto:', productData)
       
-      // Mapear campos corretamente para a tabela produtos
+      // Mapear campos corretamente para a tabela produtos (sem descricao)
       const mappedData = {
         nome: productData.nome,
-        descricao: productData.descricao || '',
         valor_unit: Number(productData.valor_unit || productData.preco || 0),
         quantidade: Number(productData.quantidade || 0),
         valor_total: Number(productData.valor_total || 0),
+        entrada: Number(productData.entrada || 0),
+        saida: Number(productData.saida || 0),
+        estoque: Number(productData.estoque || productData.quantidade || 0),
         user_id: user.id
       }
       
@@ -261,17 +263,15 @@ export const DataProvider = ({ children }) => {
     try {
       console.log('📝 Atualizando produto:', productData)
       
-      // Mapear campos corretamente para a tabela produtos
+      // Mapear campos corretamente para a tabela produtos (sem descricao)
       const mappedData = {
         nome: productData.nome,
-        descricao: productData.descricao || '',
-        valor_unit: productData.valor_unit || productData.preco || 0,
-        quantidade: productData.quantidade || 0,
-        valor_total: productData.valor_total || 0,
-        entrada: productData.entrada || 0,
-        saida: productData.saida || 0,
-        estoque: productData.estoque || productData.quantidade || 0,
-        updated_at: new Date().toISOString()
+        valor_unit: Number(productData.valor_unit || productData.preco || 0),
+        quantidade: Number(productData.quantidade || 0),
+        valor_total: Number(productData.valor_total || 0),
+        entrada: Number(productData.entrada || 0),
+        saida: Number(productData.saida || 0),
+        estoque: Number(productData.estoque || productData.quantidade || 0)
       }
       
       const { data, error } = await supabase

@@ -832,7 +832,6 @@ const ProductsPage = ({ onBack }) => {
 const ProductForm = ({ product, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     nome: product?.nome || '',
-    descricao: product?.descricao || '',
     preco: product?.preco || product?.valor_unit || '',
     estoque: product?.estoque || '',
     quantidade: product?.quantidade || ''
@@ -855,7 +854,6 @@ const ProductForm = ({ product, onSave, onCancel }) => {
     const valor_total = (formData.preco || 0) * (formData.quantidade || 0)
     const productData = {
       nome: formData.nome,
-      descricao: formData.descricao,
       valor_unit: formData.preco,
       quantidade: formData.quantidade,
       valor_total,
@@ -895,32 +893,6 @@ const ProductForm = ({ product, onSave, onCancel }) => {
         />
       </div>
       
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{
-          display: 'block',
-          fontSize: '0.9rem',
-          fontWeight: '500',
-          color: '#374151',
-          marginBottom: '0.5rem'
-        }}>
-          Descrição
-        </label>
-        <textarea
-          value={formData.descricao}
-          onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-          placeholder="Descrição do produto..."
-          rows={3}
-          style={{
-            width: '100%',
-            padding: '0.75rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '1rem',
-            outline: 'none',
-            resize: 'vertical'
-          }}
-        />
-      </div>
       
       <div style={{ marginBottom: '1rem' }}>
         <label style={{
