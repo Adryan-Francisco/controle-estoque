@@ -1,3 +1,4 @@
+
 # 🚀 Guia de Configuração - Sistema de Controle de Estoque
 
 ## Passo a Passo Completo
