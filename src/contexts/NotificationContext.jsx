@@ -2,6 +2,11 @@ import { createContext, useContext, useState, useEffect } from 'react'
 
 
 
+
+
+
+
+
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 
@@ -38,21 +43,14 @@ export const NotificationProvider = ({ children }) => {
         return
       }
 
-      // Buscar bolos com estoque baixo (simulado)
-      const { data: bolos, error: bolosError } = await supabase
-        .from('bolos')
-        .select('*')
-
-      if (bolosError) {
-        console.error('Erro ao buscar bolos:', bolosError)
-      }
 
       // Gerar notificações baseadas nos dados reais
       const newNotifications = []
 
       // Verificar estoque de produtos
       produtos?.forEach(produto => {
-        if (produto.estoque <= 0) {
+        const estoque = produto.quantidade || 0
+        if (estoque <= 0) {
           newNotifications.push({
             id: `produto-${produto.id}-sem-estoque`,
             title: 'Estoque Crítico',
@@ -62,11 +60,11 @@ export const NotificationProvider = ({ children }) => {
             action: 'Ver produto',
             data: { produtoId: produto.id, tipo: 'produto' }
           })
-        } else if (produto.estoque <= 5) {
+        } else if (estoque <= 5) {
           newNotifications.push({
             id: `produto-${produto.id}-estoque-baixo`,
             title: 'Estoque Baixo',
-            message: `Produto "${produto.nome}" com apenas ${produto.estoque} unidades`,
+            message: `Produto "${produto.nome}" com apenas ${estoque} unidades`,
             time: 'Agora',
             type: 'warning',
             action: 'Repor estoque',

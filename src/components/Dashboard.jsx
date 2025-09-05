@@ -80,11 +80,11 @@ const Dashboard = ({ onNavigateToProducts }) => {
   // Calcular estatísticas
   const stats = {
     totalProducts: products.length,
-    totalValue: products.reduce((sum, p) => sum + p.valor_total, 0),
-    lowStock: products.filter(p => p.estoque <= 10 && p.estoque > 0).length,
-    outOfStock: products.filter(p => p.estoque <= 0).length,
-    totalEntries: products.reduce((sum, p) => sum + p.entrada, 0),
-    totalExits: products.reduce((sum, p) => sum + p.saida, 0),
+    totalValue: products.reduce((sum, p) => sum + (p.valor_total || (p.valor_unit || 0) * (p.quantidade || 0)), 0),
+    lowStock: products.filter(p => (p.quantidade || 0) <= 10 && (p.quantidade || 0) > 0).length,
+    outOfStock: products.filter(p => (p.quantidade || 0) <= 0).length,
+    totalEntries: products.reduce((sum, p) => sum + (p.entrada || 0), 0),
+    totalExits: products.reduce((sum, p) => sum + (p.saida || 0), 0),
   }
 
   const formatCurrency = (value) => {
