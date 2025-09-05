@@ -26,7 +26,6 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
 const MovementReports = () => {
-  const [movements, setMovements] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [dateFilter, setDateFilter] = useState('7') // 7, 30, 90 dias
   const [typeFilter, setTypeFilter] = useState('all') // all, entrada, saida
