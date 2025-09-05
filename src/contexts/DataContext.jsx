@@ -36,35 +36,41 @@ export const DataProvider = ({ children }) => {
 
     try {
       setLoading(true)
-      // Buscar todos os dados da tabela bolos para debug
-      const { data: allData, error: allError } = await supabase
-        .from('bolos')
-        .select('*')
-
-      if (allError) {
-        console.error('Erro ao buscar todos os bolos:', allError)
-      } else {
-        console.log('🔍 Todos os bolos na tabela:', allData)
-        console.log('👤 Usuário atual:', user.email, user.id)
-        
-        // Verificar se há coluna de usuário
-        if (allData && allData.length > 0) {
-          console.log('📋 Colunas disponíveis:', Object.keys(allData[0]))
+      
+      // Tentar buscar dados com retry
+      let retries = 3
+      let data = null
+      let error = null
+      
+      while (retries > 0) {
+        try {
+          const result = await supabase
+            .from('bolos')
+            .select('*')
+            .limit(10)
+          
+          data = result.data
+          error = result.error
+          
+          if (!error) break
+        } catch (err) {
+          console.log(`Tentativa ${4 - retries} falhou:`, err.message)
+          retries--
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
         }
       }
 
-      // Por enquanto, não filtrar por usuário até descobrirmos a estrutura correta
-      const { data, error } = await supabase
-        .from('bolos')
-        .select('*')
-        .limit(10)
-
-      if (error) throw error
-      
-      console.log('📊 Dados que serão exibidos:', data)
-      setProducts(data || [])
+      if (error) {
+        console.error('Erro ao buscar produtos após 3 tentativas:', error)
+        setProducts([])
+      } else {
+        console.log('✅ Produtos carregados com sucesso:', data)
+        setProducts(data || [])
+      }
     } catch (error) {
-      console.error('Erro ao buscar produtos:', error)
+      console.error('Erro crítico ao buscar produtos:', error)
       setProducts([])
     } finally {
       setLoading(false)
@@ -293,10 +299,14 @@ export const DataProvider = ({ children }) => {
   // Limpar dados quando usuário mudar
   useEffect(() => {
     if (user) {
-      // Só carregar dados se não tiver produtos carregados
-      if (products.length === 0) {
-        refreshAllData()
-      }
+      // Aguardar um pouco antes de carregar dados para evitar requisições simultâneas
+      const timer = setTimeout(() => {
+        if (products.length === 0) {
+          refreshAllData()
+        }
+      }, 1000)
+      
+      return () => clearTimeout(timer)
     } else {
       clearAllData()
     }
