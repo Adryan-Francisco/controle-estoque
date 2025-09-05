@@ -317,8 +317,7 @@ const Login = () => {
                   fontSize: '1rem',
                   outline: 'none',
                   backdropFilter: 'blur(10px)',
-                  transition: 'all 0.3s ease',
-                  background: emailError ? 'rgba(239, 68, 68, 0.05)' : email && !emailError ? 'rgba(34, 197, 94, 0.05)' : 'rgba(255, 255, 255, 0.05)'
+                  transition: 'all 0.3s ease'
                 }}
                 placeholder="seu@email.com"
                 onFocus={(e) => {
