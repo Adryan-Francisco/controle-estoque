@@ -70,7 +70,7 @@ export const DataProvider = ({ children }) => {
       
       // Buscar produtos reais do Supabase
       const { data, error } = await supabase
-        .from('bolos')
+        .from('produtos')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -170,7 +170,7 @@ export const DataProvider = ({ children }) => {
     try {
       // Salvar no Supabase
       const { data, error } = await supabase
-        .from('bolos')
+        .from('produtos')
         .insert([{
           ...productData,
           user_id: user.id,
@@ -203,7 +203,7 @@ export const DataProvider = ({ children }) => {
     try {
       // Atualizar no Supabase
       const { data, error } = await supabase
-        .from('bolos')
+        .from('produtos')
         .update({
           ...productData,
           updated_at: new Date().toISOString()
@@ -236,7 +236,7 @@ export const DataProvider = ({ children }) => {
     try {
       // Deletar no Supabase
       const { error } = await supabase
-        .from('bolos')
+        .from('produtos')
         .delete()
         .eq('id', id)
         .eq('user_id', user.id)
