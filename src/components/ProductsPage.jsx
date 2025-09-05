@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
-import { Package, Plus, ArrowLeft, Search, Filter, Edit, Trash2, RefreshCw, TrendingUp, AlertTriangle } from 'lucide-react'
+import { Package, Plus, ArrowLeft, Search, Filter, Edit, Trash2, RefreshCw, Eye, TrendingUp, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react'
 
 const ProductsPage = ({ onBack }) => {
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [sortField, setSortField] = useState('nome')
+  const [sortDirection, setSortDirection] = useState('asc')
   const [refreshing, setRefreshing] = useState(false)
   const { user } = useAuth()
   const { products, loading, addProduct, updateProduct, deleteProduct, refreshAllData } = useData()
@@ -73,8 +76,25 @@ const ProductsPage = ({ onBack }) => {
     return matchesSearch
   })
 
+  // Ordenar produtos
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    let aValue = a[sortField]
+    let bValue = b[sortField]
+    
+    if (typeof aValue === 'string') {
+      aValue = aValue.toLowerCase()
+      bValue = bValue.toLowerCase()
+    }
+    
+    if (sortDirection === 'asc') {
+      return aValue > bValue ? 1 : -1
+    } else {
+      return aValue < bValue ? 1 : -1
+    }
+  })
+
   // Produtos com estoque baixo
-  const lowStockProducts = filteredProducts.filter(product => (product.estoque || 0) <= 5)
+  const lowStockProducts = filteredProducts.filter(product => (product.quantidade || 0) <= 5)
 
   // Formatar valor
   const formatCurrency = (value) => {
@@ -82,6 +102,27 @@ const ProductsPage = ({ onBack }) => {
       style: 'currency',
       currency: 'BRL'
     }).format(value)
+  }
+
+  // Função para ordenar
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  // Função para obter ícone de ordenação
+  const getSortIcon = (field) => {
+    if (sortField !== field) return <ArrowUp size={16} style={{ opacity: 0.3 }} />
+    return sortDirection === 'asc' ? <ArrowUp size={16} /> : <ArrowDown size={16} />
+  }
+
+  // Função para obter inicial do nome
+  const getInitial = (name) => {
+    return name.charAt(0).toUpperCase()
   }
 
   if (loading) {
@@ -94,13 +135,13 @@ const ProductsPage = ({ onBack }) => {
         fontSize: '1.2rem',
         color: '#666'
       }}>
-        Carregando estoque...
+        Carregando produtos...
       </div>
     )
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{
         display: 'flex',
@@ -209,7 +250,7 @@ const ProductsPage = ({ onBack }) => {
         }}>
           <TrendingUp size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
-            {products.reduce((sum, product) => sum + (product.estoque || 0), 0)}
+            {products.reduce((sum, product) => sum + (product.quantidade || 0), 0)}
           </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
             Total em Estoque
@@ -345,7 +386,7 @@ const ProductsPage = ({ onBack }) => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Digite o nome ou descrição do produto..."
+                placeholder="Buscar produtos..."
                 style={{
                   width: '100%',
                   padding: '0.75rem 0.75rem 0.75rem 2.5rem',
@@ -358,16 +399,47 @@ const ProductsPage = ({ onBack }) => {
               />
             </div>
           </div>
+          
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.9rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Status
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                outline: 'none',
+                background: 'white',
+                minWidth: '150px'
+              }}
+            >
+              <option value="all">Todos os Status</option>
+              <option value="in_stock">Em Estoque</option>
+              <option value="low_stock">Estoque Baixo</option>
+              <option value="out_of_stock">Sem Estoque</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Lista de Produtos */}
+      {/* Tabela de Produtos */}
       <div style={{
         background: 'white',
         borderRadius: '12px',
         padding: '1.5rem',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e2e8f0'
+        border: '1px solid #e2e8f0',
+        overflow: 'auto'
       }}>
         <h2 style={{
           fontSize: '1.5rem',
@@ -375,10 +447,10 @@ const ProductsPage = ({ onBack }) => {
           color: '#1e293b',
           margin: '0 0 1rem 0'
         }}>
-          Lista de Produtos em Estoque
+          Lista de Produtos
         </h2>
         
-        {filteredProducts.length === 0 ? (
+        {sortedProducts.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '2rem',
@@ -404,131 +476,302 @@ const ProductsPage = ({ onBack }) => {
             </button>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gap: '1rem'
-          }}>
-            {filteredProducts.map(product => (
-              <div key={product.id} style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                padding: '1rem',
-                background: (product.estoque || 0) <= 5 ? '#fef2f2' : '#f8fafc'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start'
+          <div style={{ overflow: 'auto' }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '0.9rem'
+            }}>
+              <thead>
+                <tr style={{
+                  borderBottom: '2px solid #e2e8f0',
+                  background: '#f8fafc'
                 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      marginBottom: '0.5rem'
-                    }}>
-                      <h3 style={{
-                        margin: 0,
-                        fontSize: '1.1rem',
-                        color: '#1e293b'
-                      }}>
-                        {product.nome}
-                      </h3>
-                      {(product.estoque || 0) <= 5 && (
-                        <AlertTriangle size={16} style={{ color: '#ef4444' }} />
-                      )}
-                    </div>
-                    
-                    {product.descricao && (
-                      <p style={{
-                        margin: '0 0 0.5rem 0',
-                        color: '#64748b',
-                        fontSize: '0.9rem'
-                      }}>
-                        {product.descricao}
-                      </p>
-                    )}
-                    
-                    <div style={{
-                      display: 'flex',
-                      gap: '2rem',
-                      marginTop: '0.5rem'
-                    }}>
-                      <div>
-                        <span style={{
-                          fontSize: '0.9rem',
-                          color: '#64748b'
-                        }}>
-                          Preço: 
-                        </span>
-                        <span style={{
-                          fontSize: '1rem',
-                          fontWeight: '600',
-                          color: '#059669'
-                        }}>
-                          {formatCurrency(product.preco || product.valor_unit || 0)}
-                        </span>
-                      </div>
-                      
-                      <div>
-                        <span style={{
-                          fontSize: '0.9rem',
-                          color: '#64748b'
-                        }}>
-                          Estoque: 
-                        </span>
-                        <span style={{
-                          fontSize: '1rem',
-                          fontWeight: '600',
-                          color: (product.estoque || 0) <= 5 ? '#ef4444' : '#1e293b'
-                        }}>
-                          {product.estoque || 0} unidades
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div style={{
-                    display: 'flex',
-                    gap: '0.5rem'
+                  <th style={{
+                    padding: '1rem 0.5rem',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    width: '40px'
                   }}>
-                    <button
-                      onClick={() => handleEditProduct(product)}
-                      style={{
-                        background: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.5rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Edit size={16} />
-                    </button>
+                    <input type="checkbox" />
+                  </th>
+                  
+                  <th 
+                    style={{
+                      padding: '1rem 0.5rem',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                    onClick={() => handleSort('nome')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      NOME DO PRODUTO
+                      {getSortIcon('nome')}
+                    </div>
+                  </th>
+                  
+                  <th 
+                    style={{
+                      padding: '1rem 0.5rem',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                    onClick={() => handleSort('quantidade')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      QUANTIDADE
+                      {getSortIcon('quantidade')}
+                    </div>
+                  </th>
+                  
+                  <th 
+                    style={{
+                      padding: '1rem 0.5rem',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                    onClick={() => handleSort('valor_unit')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      VALOR UNIT.
+                      {getSortIcon('valor_unit')}
+                    </div>
+                  </th>
+                  
+                  <th 
+                    style={{
+                      padding: '1rem 0.5rem',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                    onClick={() => handleSort('valor_total')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      VALOR TOTAL
+                      {getSortIcon('valor_total')}
+                    </div>
+                  </th>
+                  
+                  <th 
+                    style={{
+                      padding: '1rem 0.5rem',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                    onClick={() => handleSort('entrada')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      ENTRADA
+                      {getSortIcon('entrada')}
+                    </div>
+                  </th>
+                  
+                  <th 
+                    style={{
+                      padding: '1rem 0.5rem',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                    onClick={() => handleSort('saida')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      SAÍDA
+                      {getSortIcon('saida')}
+                    </div>
+                  </th>
+                  
+                  <th 
+                    style={{
+                      padding: '1rem 0.5rem',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: 'pointer',
+                      userSelect: 'none'
+                    }}
+                    onClick={() => handleSort('estoque')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      ESTOQUE
+                      {getSortIcon('estoque')}
+                    </div>
+                  </th>
+                  
+                  <th style={{
+                    padding: '1rem 0.5rem',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151'
+                  }}>
+                    AÇÕES
+                  </th>
+                </tr>
+              </thead>
+              
+              <tbody>
+                {sortedProducts.map(product => (
+                  <tr key={product.id} style={{
+                    borderBottom: '1px solid #e2e8f0',
+                    transition: 'background-color 0.2s'
+                  }}>
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <input type="checkbox" />
+                    </td>
                     
-                    <button
-                      onClick={() => handleDeleteProduct(product.id)}
-                      style={{
-                        background: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.5rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: '#3b82f6',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.8rem',
+                          fontWeight: '600'
+                        }}>
+                          {getInitial(product.nome)}
+                        </div>
+                        <div>
+                          <div style={{
+                            fontWeight: '500',
+                            color: '#1e293b',
+                            marginBottom: '0.25rem'
+                          }}>
+                            {product.nome}
+                          </div>
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#64748b'
+                          }}>
+                            ID: {product.id.toString().substring(0, 8)}...
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    <td style={{ padding: '1rem 0.5rem', color: '#1e293b' }}>
+                      {product.quantidade || 0}
+                    </td>
+                    
+                    <td style={{ padding: '1rem 0.5rem', color: '#1e293b' }}>
+                      {formatCurrency(product.valor_unit || 0)}
+                    </td>
+                    
+                    <td style={{ 
+                      padding: '1rem 0.5rem', 
+                      color: '#1e293b',
+                      background: '#f0fdf4'
+                    }}>
+                      {formatCurrency(product.valor_total || 0)}
+                    </td>
+                    
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: '#10b981'
+                        }}></div>
+                        <span style={{ color: '#1e293b' }}>{product.entrada || 0}</span>
+                      </div>
+                    </td>
+                    
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: '#ef4444'
+                        }}></div>
+                        <span style={{ color: '#1e293b' }}>{product.saida || 0}</span>
+                      </div>
+                    </td>
+                    
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          background: (product.estoque || 0) > 0 ? '#10b981' : '#ef4444',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold'
+                        }}>
+                          {(product.estoque || 0) > 0 ? '✓' : '✕'}
+                        </div>
+                        <span style={{ color: '#1e293b' }}>{product.estoque || 0}</span>
+                      </div>
+                    </td>
+                    
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => {/* Visualizar */}}
+                          style={{
+                            background: '#8b5cf6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '0.5rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Eye size={16} />
+                        </button>
+                        
+                        <button
+                          onClick={() => handleEditProduct(product)}
+                          style={{
+                            background: '#8b5cf6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '0.5rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -591,7 +834,8 @@ const ProductForm = ({ product, onSave, onCancel }) => {
     nome: product?.nome || '',
     descricao: product?.descricao || '',
     preco: product?.preco || product?.valor_unit || '',
-    estoque: product?.estoque || ''
+    estoque: product?.estoque || '',
+    quantidade: product?.quantidade || ''
   })
 
   const handleSubmit = (e) => {
@@ -607,7 +851,15 @@ const ProductForm = ({ product, onSave, onCancel }) => {
       return
     }
 
-    onSave(formData)
+    // Calcular valor total
+    const valor_total = (formData.preco || 0) * (formData.quantidade || 0)
+    const productData = {
+      ...formData,
+      valor_unit: formData.preco,
+      valor_total
+    }
+
+    onSave(productData)
   }
 
   return (
@@ -626,7 +878,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           type="text"
           value={formData.nome}
           onChange={(e) => setFormData({...formData, nome: e.target.value})}
-          placeholder="Ex: Farinha de trigo, Açúcar, Ovos..."
+          placeholder="Ex: BANDEJA ULTRAFEST 5 PRATA"
           style={{
             width: '100%',
             padding: '0.75rem',
@@ -651,7 +903,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
         <textarea
           value={formData.descricao}
           onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-          placeholder="Descrição do produto ou ingrediente..."
+          placeholder="Descrição do produto..."
           rows={3}
           style={{
             width: '100%',
@@ -673,7 +925,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           color: '#374151',
           marginBottom: '0.5rem'
         }}>
-          Preço por Unidade *
+          Preço Unitário *
         </label>
         <input
           type="number"
@@ -681,6 +933,32 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           value={formData.preco}
           onChange={(e) => setFormData({...formData, preco: parseFloat(e.target.value) || 0})}
           placeholder="0.00"
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '1rem',
+            outline: 'none'
+          }}
+        />
+      </div>
+      
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{
+          display: 'block',
+          fontSize: '0.9rem',
+          fontWeight: '500',
+          color: '#374151',
+          marginBottom: '0.5rem'
+        }}>
+          Quantidade *
+        </label>
+        <input
+          type="number"
+          value={formData.quantidade}
+          onChange={(e) => setFormData({...formData, quantidade: parseInt(e.target.value) || 0})}
+          placeholder="0"
           style={{
             width: '100%',
             padding: '0.75rem',
@@ -700,7 +978,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           color: '#374151',
           marginBottom: '0.5rem'
         }}>
-          Quantidade em Estoque
+          Estoque Inicial
         </label>
         <input
           type="number"
