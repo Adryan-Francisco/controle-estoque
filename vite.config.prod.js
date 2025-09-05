@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+// Configuração para produção (GitHub Pages)
 export default defineConfig({
   plugins: [react()],
-  // base: '/controle-estoque-vendas/', // Comentado para desenvolvimento local
+  base: '/controle-estoque-vendas/',
   build: {
     outDir: 'dist'
   }

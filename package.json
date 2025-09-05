@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:prod": "vite build --config vite.config.prod.js",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "npm run build && git add . && git commit -m 'Deploy: Build atualizado' && git push",
+    "deploy": "npm run build:prod && git add . && git commit -m 'Deploy: Build atualizado' && git push",
     "preview:build": "npm run build && npm run preview"
   },
   "dependencies": {
