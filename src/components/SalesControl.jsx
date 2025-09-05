@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useData } from '../contexts/DataContext'
 import SaleForm from './SaleForm'
 import { 
   ShoppingCart, 
@@ -23,9 +23,7 @@ import {
 
 const SalesControl = () => {
   const { user } = useAuth()
-  const [products, setProducts] = useState([])
-  const [sales, setSales] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { products, sales, loading, addSale, refreshAllData } = useData()
   const [showSaleForm, setShowSaleForm] = useState(false)
   const [editingSale, setEditingSale] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
@@ -41,238 +39,87 @@ const SalesControl = () => {
   })
 
   useEffect(() => {
-    fetchProducts()
-    fetchSales()
+    // Carregar dados se não tiver
+    if (products.length === 0 || sales.length === 0) {
+      refreshAllData()
+    }
   }, [])
 
-  const fetchProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('bolos')
-        .select('*')
-        .order('nome')
-
-      if (error) throw error
-      setProducts(data || [])
-    } catch (error) {
-      console.error('Erro ao buscar bolos:', error)
-    }
-  }
-
-  const fetchSales = async () => {
-    try {
-      // Primeiro, tentar buscar vendas sem join
-      const { data: vendas, error: vendasError } = await supabase
-        .from('vendas')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (vendasError) {
-        console.error('Erro ao buscar vendas:', vendasError)
-        setSales([])
-        return
-      }
-
-      // Tentar buscar itens de venda com dados dos bolos
-      let vendasComItens = []
-      try {
-        const { data: itens, error: itensError } = await supabase
-          .from('venda_itens')
-          .select(`
-            *,
-            bolos (
-              id,
-              nome,
-              descricao,
-              preco,
-              preco_por_kg,
-              categoria
-            )
-          `)
-
-        if (!itensError && itens) {
-          // Mapear itens para vendas
-          vendasComItens = vendas.map(venda => ({
-            ...venda,
-            venda_itens: itens.filter(item => item.venda_id === venda.id)
-          }))
-        } else {
-          // Se não conseguir buscar itens, usar vendas sem itens
-          vendasComItens = vendas.map(venda => ({
-            ...venda,
-            venda_itens: []
-          }))
-        }
-      } catch (itensError) {
-        console.warn('Erro ao buscar itens de venda, usando vendas sem itens:', itensError)
-        vendasComItens = vendas.map(venda => ({
-          ...venda,
-          venda_itens: []
-        }))
-      }
-
-      setSales(vendasComItens)
-    } catch (error) {
-      console.error('Erro geral ao buscar vendas:', error)
-      setSales([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Adicionar produto ao carrinho
   const addToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id)
     
     if (existingItem) {
-      setCart(cart.map(item =>
-        item.id === product.id
-          ? { ...item, quantidade: item.quantidade + (item.tipo_venda === 'kg' ? 0.1 : 1) }
+      setCart(cart.map(item => 
+        item.id === product.id 
+          ? { ...item, quantity: item.quantity + 1 }
           : item
       ))
     } else {
-      setCart([...cart, {
-        ...product,
-        quantidade: 1,
-        tipo_venda: 'unidade',
-        preco_unitario: product.preco || 0
-      }])
+      setCart([...cart, { ...product, quantity: 1 }])
     }
   }
 
+  // Remover produto do carrinho
   const removeFromCart = (productId) => {
     setCart(cart.filter(item => item.id !== productId))
   }
 
-  const updateCartQuantity = (productId, newQuantity) => {
-    if (newQuantity <= 0) {
+  // Atualizar quantidade no carrinho
+  const updateCartQuantity = (productId, quantity) => {
+    if (quantity <= 0) {
       removeFromCart(productId)
     } else {
-      setCart(cart.map(item =>
-        item.id === productId
-          ? { ...item, quantidade: newQuantity }
+      setCart(cart.map(item => 
+        item.id === productId 
+          ? { ...item, quantity }
           : item
       ))
     }
   }
 
-  const updateCartItemType = (productId, tipoVenda) => {
-    setCart(cart.map(item =>
-      item.id === productId
-        ? { 
-            ...item, 
-            tipo_venda: tipoVenda,
-            quantidade: tipoVenda === 'kg' ? 0.1 : 1
-          }
-        : item
-    ))
-  }
-
+  // Calcular total do carrinho
   const getCartTotal = () => {
     return cart.reduce((total, item) => {
-      const preco = item.tipo_venda === 'kg' ? item.preco_por_kg : item.preco
-      return total + (item.quantidade * (preco || 0))
+      const price = item.preco || item.valor_unit || 0
+      return total + (price * item.quantity)
     }, 0)
   }
 
-  const getFinalTotal = () => {
-    const subtotal = getCartTotal()
-    const desconto = parseFloat(saleData.desconto) || 0
-    return subtotal - desconto
-  }
-
-  const handleCreateSale = async () => {
+  // Finalizar venda
+  const handleFinalizeSale = async () => {
     if (cart.length === 0) {
-      alert('Adicione pelo menos um produto ao carrinho')
+      alert('Adicione produtos ao carrinho antes de finalizar a venda.')
       return
     }
 
     if (!saleData.cliente_nome.trim()) {
-      alert('Nome do cliente é obrigatório')
-      return
-    }
-
-    if (saleData.metodo_pagamento === 'prazo' && !saleData.data_vencimento) {
-      alert('Data de vencimento é obrigatória para vendas à prazo')
+      alert('Nome do cliente é obrigatório.')
       return
     }
 
     try {
-      let vendaId
-
-      if (editingSale) {
-        // Atualizar venda existente
-        const { error: vendaError } = await supabase
-          .from('vendas')
-          .update({
-            cliente_nome: saleData.cliente_nome,
-            cliente_email: saleData.cliente_email,
-            cliente_telefone: saleData.cliente_telefone,
-            metodo_pagamento: saleData.metodo_pagamento,
-            status_pagamento: saleData.metodo_pagamento === 'vista' ? 'pago' : 'pendente',
-            data_vencimento: saleData.data_vencimento || null,
-            valor_total: getCartTotal(),
-            desconto: saleData.desconto,
-            valor_final: getFinalTotal(),
-            observacoes: saleData.observacoes
-          })
-          .eq('id', editingSale.id)
-
-        if (vendaError) throw vendaError
-        vendaId = editingSale.id
-
-        // Excluir itens antigos
-        const { error: deleteItensError } = await supabase
-          .from('venda_itens')
-          .delete()
-          .eq('venda_id', editingSale.id)
-
-        if (deleteItensError) throw deleteItensError
-      } else {
-        // Criar nova venda
-        const { data: venda, error: vendaError } = await supabase
-          .from('vendas')
-          .insert([{
-            cliente_nome: saleData.cliente_nome,
-            cliente_email: saleData.cliente_email,
-            cliente_telefone: saleData.cliente_telefone,
-            metodo_pagamento: saleData.metodo_pagamento,
-            status_pagamento: saleData.metodo_pagamento === 'vista' ? 'pago' : 'pendente',
-            data_vencimento: saleData.data_vencimento || null,
-            valor_total: getCartTotal(),
-            desconto: saleData.desconto,
-            valor_final: getFinalTotal(),
-            observacoes: saleData.observacoes,
-            user_id: user.id
-          }])
-          .select()
-
-        if (vendaError) throw vendaError
-        vendaId = venda[0].id
+      const saleDataToSave = {
+        ...saleData,
+        user_id: user.id,
+        valor_total: getCartTotal(),
+        itens: cart.map(item => ({
+          produto_id: item.id,
+          quantidade: item.quantity,
+          preco_unitario: item.preco || item.valor_unit || 0,
+          subtotal: (item.preco || item.valor_unit || 0) * item.quantity
+        })),
+        created_at: new Date().toISOString()
       }
 
-      // Adicionar itens da venda
-      const itens = cart.map(item => {
-        const preco = item.tipo_venda === 'kg' ? item.preco_por_kg : item.preco
-        return {
-          venda_id: vendaId,
-          bolo_id: item.id,
-          quantidade: item.quantidade,
-          preco_unitario: preco || 0,
-          subtotal: item.quantidade * (preco || 0),
-          tipo_venda: item.tipo_venda || 'unidade'
-        }
-      })
+      const { error } = await addSale(saleDataToSave)
+      
+      if (error) {
+        throw error
+      }
 
-      const { error: itensError } = await supabase
-        .from('venda_itens')
-        .insert(itens)
-
-      if (itensError) throw itensError
-
-      // Limpar formulário e carrinho
+      // Limpar carrinho e dados da venda
       setCart([])
-      setEditingSale(null)
       setSaleData({
         cliente_nome: '',
         cliente_email: '',
@@ -282,672 +129,689 @@ const SalesControl = () => {
         desconto: 0,
         observacoes: ''
       })
-      setShowSaleForm(false)
-      
-      // Atualizar listas
-      await fetchProducts()
-      await fetchSales()
-      
-      alert(editingSale ? 'Venda atualizada com sucesso!' : 'Venda registrada com sucesso!')
+
+      alert('Venda finalizada com sucesso!')
     } catch (error) {
-      console.error('Erro ao salvar venda:', error)
-      alert('Erro ao salvar venda. Tente novamente.')
+      console.error('Erro ao finalizar venda:', error)
+      alert('Erro ao finalizar venda. Tente novamente.')
     }
   }
 
-  const handleEditSale = (sale) => {
-    setEditingSale(sale)
-    setSaleData({
-      cliente_nome: sale.cliente_nome || '',
-      cliente_email: sale.cliente_email || '',
-      cliente_telefone: sale.cliente_telefone || '',
-      metodo_pagamento: sale.metodo_pagamento || 'vista',
-      data_vencimento: sale.data_vencimento || '',
-      desconto: sale.desconto || 0,
-      observacoes: sale.observacoes || ''
-    })
-    setShowSaleForm(true)
+  // Limpar carrinho
+  const clearCart = () => {
+    setCart([])
   }
 
-  const handleDeleteSale = async (saleId) => {
-    try {
-      // Primeiro, excluir itens da venda
-      const { error: itensError } = await supabase
-        .from('venda_itens')
-        .delete()
-        .eq('venda_id', saleId)
-
-      if (itensError) throw itensError
-
-      // Depois, excluir a venda
-      const { error: vendaError } = await supabase
-        .from('vendas')
-        .delete()
-        .eq('id', saleId)
-
-      if (vendaError) throw vendaError
-
-      // Atualizar lista
-      await fetchSales()
-      setShowDeleteConfirm(null)
-      alert('Venda excluída com sucesso!')
-    } catch (error) {
-      console.error('Erro ao excluir venda:', error)
-      alert('Erro ao excluir venda. Tente novamente.')
-    }
+  // Formatar data
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('pt-BR')
   }
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'pago':
-        return <CheckCircle size={16} color="#10b981" />
-      case 'pendente':
-        return <Clock size={16} color="#f59e0b" />
-      case 'atrasado':
-        return <AlertCircle size={16} color="#ef4444" />
-      case 'cancelado':
-        return <X size={16} color="#6b7280" />
-      default:
-        return <Clock size={16} color="#6b7280" />
-    }
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pago':
-        return '#10b981'
-      case 'pendente':
-        return '#f59e0b'
-      case 'atrasado':
-        return '#ef4444'
-      case 'cancelado':
-        return '#6b7280'
-      default:
-        return '#6b7280'
-    }
+  // Formatar valor
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value)
   }
 
   if (loading) {
     return (
       <div style={{
-        minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, var(--primary-50) 0%, var(--secondary-50) 50%, var(--gray-50) 100%)'
+        alignItems: 'center',
+        height: '50vh',
+        fontSize: '1.2rem',
+        color: '#666'
       }}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1rem'
-        }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid #e2e8f0',
-            borderTop: '4px solid #3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <p style={{ color: '#64748b', fontSize: '1rem' }}>Carregando vendas...</p>
-        </div>
+        Carregando vendas...
       </div>
     )
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, var(--primary-50) 0%, var(--secondary-50) 50%, var(--gray-50) 100%)',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      {/* Background decorativo */}
+    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header */}
       <div style={{
-        position: 'absolute',
-        inset: 0,
-        overflow: 'hidden'
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '2rem',
+        paddingBottom: '1rem',
+        borderBottom: '2px solid #e2e8f0'
       }}>
-        <div style={{
-          position: 'absolute',
-          top: '-160px',
-          right: '-160px',
-          width: '320px',
-          height: '320px',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          borderRadius: '50%',
-          filter: 'blur(48px)'
-        }}></div>
-        <div style={{
-          position: 'absolute',
-          bottom: '-160px',
-          left: '-160px',
-          width: '320px',
-          height: '320px',
-          backgroundColor: 'rgba(147, 51, 234, 0.1)',
-          borderRadius: '50%',
-          filter: 'blur(48px)'
-        }}></div>
-      </div>
-
-      <div style={{
-        position: 'relative',
-        zIndex: 10,
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '2rem 1rem'
-      }}>
-        {/* Header */}
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{
+        <div>
+          <h1 style={{
+            fontSize: '2rem',
+            fontWeight: '700',
+            color: '#1e293b',
+            margin: 0,
             display: 'flex',
             alignItems: 'center',
-            gap: '1rem',
-            marginBottom: '0.5rem'
+            gap: '0.5rem'
           }}>
-            <div style={{
-              width: '4px',
-              height: '2.5rem',
-              background: 'linear-gradient(to bottom, var(--primary-500), var(--secondary-500))',
-              borderRadius: 'var(--radius-sm)'
-            }}></div>
-            <h1 style={{
-              fontSize: '2.5rem',
-              fontWeight: '800',
-              background: 'linear-gradient(135deg, var(--gray-800) 0%, var(--gray-600) 50%, var(--primary-600) 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              color: 'transparent',
-              margin: 0,
-              letterSpacing: '-0.02em'
-            }}>
-              Controle de Vendas
-            </h1>
-          </div>
-          <p style={{
-            color: 'var(--gray-600)',
-            fontSize: '1.125rem',
-            margin: 0,
-            marginLeft: '1.25rem',
-            fontWeight: '500'
-          }}>
-            Gerencie vendas à vista e à prazo
+            <ShoppingCart size={32} />
+            Controle de Vendas
+          </h1>
+          <p style={{ color: '#64748b', margin: '0.5rem 0 0 0' }}>
+            Gerencie suas vendas e clientes
           </p>
         </div>
+      </div>
 
-        {/* Botão Nova Venda */}
-        <div style={{ marginBottom: '2rem' }}>
-          <button
-            onClick={() => setShowSaleForm(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '1rem 2rem',
-              background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'var(--radius-xl)',
-              fontSize: '1rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'var(--transition-normal)',
-              boxShadow: 'var(--shadow-md)'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-2px)'
-              e.target.style.boxShadow = 'var(--shadow-lg)'
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)'
-              e.target.style.boxShadow = 'var(--shadow-md)'
-            }}
-          >
-            <ShoppingCart size={20} />
-            Nova Venda
-          </button>
-        </div>
-
-        {/* Lista de Vendas */}
+      {/* Estatísticas */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '1rem',
+        marginBottom: '2rem'
+      }}>
         <div style={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: 'var(--radius-2xl)',
-          boxShadow: 'var(--shadow-2xl)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          overflow: 'hidden'
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '1.5rem',
+          borderRadius: '12px',
+          textAlign: 'center'
         }}>
-          <div style={{
-            padding: '1.5rem',
-            borderBottom: '2px solid var(--gray-100)'
-          }}>
-            <h3 style={{
-              margin: 0,
-              fontSize: '1.25rem',
-              fontWeight: '700',
-              color: 'var(--gray-800)'
-            }}>
-              Histórico de Vendas
-            </h3>
+          <BarChart3 size={24} style={{ marginBottom: '0.5rem' }} />
+          <div style={{ fontSize: '2rem', fontWeight: '700' }}>
+            {sales.length}
           </div>
-
-          <div style={{ padding: '1.5rem' }}>
-            {sales.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '3rem',
-                color: 'var(--gray-500)'
-              }}>
-                <ShoppingCart size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-                <p style={{ margin: 0, fontSize: '1.125rem' }}>
-                  Nenhuma venda registrada ainda
-                </p>
-              </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gap: '1rem'
-              }}>
-                {sales.map(sale => (
-                  <div
-                    key={sale.id}
-                    style={{
-                      background: 'white',
-                      borderRadius: 'var(--radius-xl)',
-                      padding: '1.5rem',
-                      boxShadow: 'var(--shadow-md)',
-                      border: '1px solid var(--gray-200)',
-                      transition: 'var(--transition-normal)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.transform = 'translateY(-2px)'
-                      e.target.style.boxShadow = 'var(--shadow-lg)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.transform = 'translateY(0)'
-                      e.target.style.boxShadow = 'var(--shadow-md)'
-                    }}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '1rem'
-                    }}>
-                      <div>
-                        <h4 style={{
-                          margin: '0 0 0.5rem 0',
-                          fontSize: '1.125rem',
-                          fontWeight: '600',
-                          color: 'var(--gray-800)'
-                        }}>
-                          {sale.cliente_nome}
-                        </h4>
-                        <div style={{
-                          display: 'flex',
-                          gap: '1rem',
-                          fontSize: '0.875rem',
-                          color: 'var(--gray-600)'
-                        }}>
-                          {sale.cliente_email && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <Mail size={14} />
-                              {sale.cliente_email}
-                            </span>
-                          )}
-                          {sale.cliente_telefone && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <Phone size={14} />
-                              {sale.cliente_telefone}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        {getStatusIcon(sale.status_pagamento)}
-                        <span style={{
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: getStatusColor(sale.status_pagamento)
-                        }}>
-                          {sale.status_pagamento.charAt(0).toUpperCase() + sale.status_pagamento.slice(1)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: '1rem',
-                      marginBottom: '1rem'
-                    }}>
-                      <div>
-                        <span style={{
-                          fontSize: '0.875rem',
-                          color: 'var(--gray-500)',
-                          fontWeight: '500'
-                        }}>
-                          Método de Pagamento
-                        </span>
-                        <p style={{
-                          margin: '0.25rem 0 0 0',
-                          fontSize: '1rem',
-                          fontWeight: '600',
-                          color: 'var(--gray-800)'
-                        }}>
-                          {sale.metodo_pagamento === 'vista' ? 'À Vista' : 'À Prazo'}
-                        </p>
-                      </div>
-                      <div>
-                        <span style={{
-                          fontSize: '0.875rem',
-                          color: 'var(--gray-500)',
-                          fontWeight: '500'
-                        }}>
-                          Valor Total
-                        </span>
-                        <p style={{
-                          margin: '0.25rem 0 0 0',
-                          fontSize: '1rem',
-                          fontWeight: '600',
-                          color: 'var(--gray-800)'
-                        }}>
-                          R$ {sale.valor_final.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                      <div>
-                        <span style={{
-                          fontSize: '0.875rem',
-                          color: 'var(--gray-500)',
-                          fontWeight: '500'
-                        }}>
-                          Data da Venda
-                        </span>
-                        <p style={{
-                          margin: '0.25rem 0 0 0',
-                          fontSize: '1rem',
-                          fontWeight: '600',
-                          color: 'var(--gray-800)'
-                        }}>
-                          {new Date(sale.created_at).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
-                      {sale.data_vencimento && (
-                        <div>
-                          <span style={{
-                            fontSize: '0.875rem',
-                            color: 'var(--gray-500)',
-                            fontWeight: '500'
-                          }}>
-                            Vencimento
-                          </span>
-                          <p style={{
-                            margin: '0.25rem 0 0 0',
-                            fontSize: '1rem',
-                            fontWeight: '600',
-                            color: 'var(--gray-800)'
-                          }}>
-                            {new Date(sale.data_vencimento).toLocaleDateString('pt-BR')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {sale.venda_itens && sale.venda_itens.length > 0 && (
-                      <div>
-                        <span style={{
-                          fontSize: '0.875rem',
-                          color: 'var(--gray-500)',
-                          fontWeight: '500'
-                        }}>
-                          Produtos
-                        </span>
-                        <div style={{
-                          marginTop: '0.5rem',
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '0.5rem'
-                        }}>
-                          {sale.venda_itens.map((item, index) => (
-                            <span
-                              key={index}
-                              style={{
-                                background: 'var(--primary-50)',
-                                color: 'var(--primary-700)',
-                                padding: '0.25rem 0.75rem',
-                                borderRadius: 'var(--radius-lg)',
-                                fontSize: '0.875rem',
-                                fontWeight: '500'
-                              }}
-                            >
-                              {item.bolos?.nome || 'Produto'} (x{item.quantidade})
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Botões de Ação */}
-                    <div style={{
-                      display: 'flex',
-                      gap: '0.5rem',
-                      marginTop: '1rem',
-                      paddingTop: '1rem',
-                      borderTop: '1px solid var(--gray-200)'
-                    }}>
-                      <button
-                        onClick={() => handleEditSale(sale)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.5rem 1rem',
-                          background: 'var(--primary-50)',
-                          color: 'var(--primary-600)',
-                          border: '1px solid var(--primary-200)',
-                          borderRadius: 'var(--radius-lg)',
-                          fontSize: '0.875rem',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          transition: 'var(--transition-normal)'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.background = 'var(--primary-100)'
-                          e.target.style.borderColor = 'var(--primary-300)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = 'var(--primary-50)'
-                          e.target.style.borderColor = 'var(--primary-200)'
-                        }}
-                      >
-                        <Edit size={16} />
-                        Editar
-                      </button>
-                      
-                      <button
-                        onClick={() => setShowDeleteConfirm(sale.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.5rem 1rem',
-                          background: 'var(--error-50)',
-                          color: 'var(--error-600)',
-                          border: '1px solid var(--error-200)',
-                          borderRadius: 'var(--radius-lg)',
-                          fontSize: '0.875rem',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          transition: 'var(--transition-normal)'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.background = 'var(--error-100)'
-                          e.target.style.borderColor = 'var(--error-300)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = 'var(--error-50)'
-                          e.target.style.borderColor = 'var(--error-200)'
-                        }}
-                      >
-                        <Trash2 size={16} />
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+            Total de Vendas
+          </div>
+        </div>
+        
+        <div style={{
+          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          color: 'white',
+          padding: '1.5rem',
+          borderRadius: '12px',
+          textAlign: 'center'
+        }}>
+          <DollarSign size={24} style={{ marginBottom: '0.5rem' }} />
+          <div style={{ fontSize: '2rem', fontWeight: '700' }}>
+            {formatCurrency(sales.reduce((total, sale) => total + (sale.valor_total || 0), 0))}
+          </div>
+          <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+            Faturamento Total
           </div>
         </div>
       </div>
 
-      {/* Modal de Nova Venda */}
-      {showSaleForm && (
-        <SaleForm
-          products={products}
-          cart={cart}
-          saleData={saleData}
-          setSaleData={setSaleData}
-          addToCart={addToCart}
-          removeFromCart={removeFromCart}
-          updateCartQuantity={updateCartQuantity}
-          updateCartItemType={updateCartItemType}
-          getCartTotal={getCartTotal}
-          getFinalTotal={getFinalTotal}
-          editingSale={editingSale}
-          onClose={() => {
-            setShowSaleForm(false)
-            setEditingSale(null)
-            setCart([])
-            setSaleData({
-              cliente_nome: '',
-              cliente_email: '',
-              cliente_telefone: '',
-              metodo_pagamento: 'vista',
-              data_vencimento: '',
-              desconto: 0,
-              observacoes: ''
-            })
-          }}
-          onSubmit={handleCreateSale}
-        />
-      )}
-
-      {/* Modal de Confirmação de Exclusão */}
-      {showDeleteConfirm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
+      {/* Carrinho de Compras */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '600',
+          color: '#1e293b',
+          margin: '0 0 1rem 0',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
+          gap: '0.5rem'
         }}>
+          <ShoppingCart size={24} />
+          Carrinho de Compras
+        </h2>
+
+        {cart.length === 0 ? (
           <div style={{
-            background: 'white',
-            borderRadius: 'var(--radius-xl)',
+            textAlign: 'center',
             padding: '2rem',
-            maxWidth: '400px',
-            width: '90%',
-            boxShadow: 'var(--shadow-2xl)'
+            color: '#64748b'
           }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              marginBottom: '1.5rem'
-            }}>
-              <div style={{
-                padding: '0.75rem',
-                background: 'var(--error-100)',
-                borderRadius: 'var(--radius-lg)',
-                color: 'var(--error-600)'
+            <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <p>Carrinho vazio. Adicione produtos para começar uma venda.</p>
+          </div>
+        ) : (
+          <div>
+            {cart.map(item => (
+              <div key={item.id} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                marginBottom: '0.5rem',
+                background: '#f8fafc'
               }}>
-                <AlertCircle size={24} />
-              </div>
-              <div>
-                <h3 style={{
-                  margin: '0 0 0.25rem 0',
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: 'var(--gray-800)'
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>
+                    {item.nome}
+                  </h3>
+                  <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
+                    {formatCurrency(item.preco || item.valor_unit || 0)} cada
+                  </p>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem'
                 }}>
-                  Confirmar Exclusão
-                </h3>
-                <p style={{
-                  margin: 0,
-                  fontSize: '0.875rem',
-                  color: 'var(--gray-600)'
-                }}>
-                  Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.
-                </p>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <button
+                      onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                      style={{
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.5rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Minus size={16} />
+                    </button>
+                    
+                    <span style={{
+                      minWidth: '2rem',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#1e293b'
+                    }}>
+                      {item.quantity}
+                    </span>
+                    
+                    <button
+                      onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                      style={{
+                        background: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.5rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  
+                  <div style={{
+                    minWidth: '100px',
+                    textAlign: 'right',
+                    fontWeight: '600',
+                    color: '#1e293b'
+                  }}>
+                    {formatCurrency((item.preco || item.valor_unit || 0) * item.quantity)}
+                  </div>
+                  
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    style={{
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '0.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
             
             <div style={{
               display: 'flex',
-              gap: '1rem',
-              justifyContent: 'flex-end'
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '1rem',
+              paddingTop: '1rem',
+              borderTop: '2px solid #e2e8f0'
             }}>
               <button
-                onClick={() => setShowDeleteConfirm(null)}
+                onClick={clearCart}
                 style={{
-                  padding: '0.75rem 1.5rem',
-                  background: 'var(--gray-100)',
-                  color: 'var(--gray-600)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-lg)',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'var(--transition-normal)'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--gray-200)'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--gray-100)'
-                }}
-              >
-                Cancelar
-              </button>
-              
-              <button
-                onClick={() => handleDeleteSale(showDeleteConfirm)}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: 'var(--error-500)',
+                  background: '#64748b',
                   color: 'white',
                   border: 'none',
-                  borderRadius: 'var(--radius-lg)',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1.5rem',
                   cursor: 'pointer',
-                  transition: 'var(--transition-normal)'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--error-600)'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'var(--error-500)'
+                  fontSize: '0.9rem',
+                  fontWeight: '500'
                 }}
               >
-                Excluir
+                Limpar Carrinho
               </button>
+              
+              <div style={{
+                fontSize: '1.5rem',
+                fontWeight: '700',
+                color: '#1e293b'
+              }}>
+                Total: {formatCurrency(getCartTotal())}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
+      {/* Dados da Venda */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '600',
+          color: '#1e293b',
+          margin: '0 0 1rem 0'
+        }}>
+          Dados da Venda
+        </h2>
+        
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.9rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Nome do Cliente *
+            </label>
+            <input
+              type="text"
+              value={saleData.cliente_nome}
+              onChange={(e) => setSaleData({...saleData, cliente_nome: e.target.value})}
+              placeholder="Nome completo do cliente"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+            />
+          </div>
+          
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.9rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Email do Cliente
+            </label>
+            <input
+              type="email"
+              value={saleData.cliente_email}
+              onChange={(e) => setSaleData({...saleData, cliente_email: e.target.value})}
+              placeholder="email@exemplo.com"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+            />
+          </div>
+          
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.9rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Telefone do Cliente
+            </label>
+            <input
+              type="tel"
+              value={saleData.cliente_telefone}
+              onChange={(e) => setSaleData({...saleData, cliente_telefone: e.target.value})}
+              placeholder="(11) 99999-9999"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+            />
+          </div>
+          
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.9rem',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Método de Pagamento
+            </label>
+            <select
+              value={saleData.metodo_pagamento}
+              onChange={(e) => setSaleData({...saleData, metodo_pagamento: e.target.value})}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                outline: 'none',
+                background: 'white'
+              }}
+            >
+              <option value="vista">À Vista</option>
+              <option value="credito">Cartão de Crédito</option>
+              <option value="debito">Cartão de Débito</option>
+              <option value="pix">PIX</option>
+              <option value="parcelado">Parcelado</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style={{ marginTop: '1rem' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '0.9rem',
+            fontWeight: '500',
+            color: '#374151',
+            marginBottom: '0.5rem'
+          }}>
+            Observações
+          </label>
+          <textarea
+            value={saleData.observacoes}
+            onChange={(e) => setSaleData({...saleData, observacoes: e.target.value})}
+            placeholder="Observações adicionais sobre a venda..."
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '1rem',
+              outline: 'none',
+              resize: 'vertical'
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Botão Finalizar Venda */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '1rem',
+        marginBottom: '2rem'
+      }}>
+        <button
+          onClick={handleFinalizeSale}
+          disabled={cart.length === 0}
+          style={{
+            background: cart.length === 0 ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '1rem 2rem',
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.2s',
+            opacity: cart.length === 0 ? 0.6 : 1
+          }}
+        >
+          <CheckCircle size={20} />
+          Finalizar Venda
+        </button>
+      </div>
+
+      {/* Lista de Produtos */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '600',
+          color: '#1e293b',
+          margin: '0 0 1rem 0'
+        }}>
+          Produtos Disponíveis
+        </h2>
+        
+        {products.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '2rem',
+            color: '#64748b'
+          }}>
+            <Package size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <p>Nenhum produto cadastrado.</p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: '1rem'
+          }}>
+            {products.map(product => (
+              <div key={product.id} style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '1rem',
+                background: '#f8fafc',
+                transition: 'all 0.2s'
+              }}>
+                <h3 style={{
+                  margin: '0 0 0.5rem 0',
+                  fontSize: '1.1rem',
+                  color: '#1e293b'
+                }}>
+                  {product.nome}
+                </h3>
+                
+                {product.descricao && (
+                  <p style={{
+                    margin: '0 0 0.5rem 0',
+                    color: '#64748b',
+                    fontSize: '0.9rem'
+                  }}>
+                    {product.descricao}
+                  </p>
+                )}
+                
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{
+                    fontSize: '1.2rem',
+                    fontWeight: '600',
+                    color: '#059669'
+                  }}>
+                    {formatCurrency(product.preco || product.valor_unit || 0)}
+                  </div>
+                  
+                  <div style={{
+                    fontSize: '0.9rem',
+                    color: '#64748b'
+                  }}>
+                    Estoque: {product.estoque || 0}
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => addToCart(product)}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Plus size={16} />
+                  Adicionar ao Carrinho
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Histórico de Vendas */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: '600',
+          color: '#1e293b',
+          margin: '0 0 1rem 0'
+        }}>
+          Histórico de Vendas
+        </h2>
+        
+        {sales.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '2rem',
+            color: '#64748b'
+          }}>
+            <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <p>Nenhuma venda realizada ainda.</p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gap: '1rem'
+          }}>
+            {sales.map(sale => (
+              <div key={sale.id} style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '1rem',
+                background: '#f8fafc'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '0.5rem'
+                }}>
+                  <div>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: '1.1rem',
+                      color: '#1e293b'
+                    }}>
+                      {sale.cliente_nome || 'Cliente não informado'}
+                    </h3>
+                    <p style={{
+                      margin: '0.25rem 0 0 0',
+                      color: '#64748b',
+                      fontSize: '0.9rem'
+                    }}>
+                      {formatDate(sale.created_at)}
+                    </p>
+                  </div>
+                  
+                  <div style={{
+                    textAlign: 'right'
+                  }}>
+                    <div style={{
+                      fontSize: '1.2rem',
+                      fontWeight: '600',
+                      color: '#059669'
+                    }}>
+                      {formatCurrency(sale.valor_total || 0)}
+                    </div>
+                    <div style={{
+                      fontSize: '0.9rem',
+                      color: '#64748b',
+                      textTransform: 'capitalize'
+                    }}>
+                      {sale.metodo_pagamento}
+                    </div>
+                  </div>
+                </div>
+                
+                {sale.observacoes && (
+                  <p style={{
+                    margin: '0.5rem 0 0 0',
+                    color: '#64748b',
+                    fontSize: '0.9rem',
+                    fontStyle: 'italic'
+                  }}>
+                    {sale.observacoes}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
