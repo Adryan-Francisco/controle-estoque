@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Header from './components/Header'
 import Dashboard from './components/Dashboard'
@@ -28,7 +29,8 @@ function App() {
 
   return (
     <AuthProvider>
-      <ProtectedRoute>
+      <NotificationProvider>
+        <ProtectedRoute>
         <div style={{
           minHeight: '100vh',
           background: 'linear-gradient(135deg, var(--primary-50) 0%, var(--secondary-50) 50%, var(--gray-50) 100%)'
@@ -58,7 +60,8 @@ function App() {
             />
           )}
         </div>
-      </ProtectedRoute>
+        </ProtectedRoute>
+      </NotificationProvider>
     </AuthProvider>
   )
 }

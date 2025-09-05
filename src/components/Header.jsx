@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, Package, User, Settings, Bell, Search, Menu, X, Home, BarChart3, FileText, HelpCircle, Moon, Sun, Shield, ShoppingCart } from 'lucide-react'
+import { useNotifications } from '../contexts/NotificationContext'
+import { LogOut, Package, User, Settings, Bell, Search, Menu, X, Home, BarChart3, FileText, HelpCircle, Moon, Sun, Shield, ShoppingCart, Check, CheckCheck } from 'lucide-react'
 
 const Header = ({ currentPage, onNavigateToDashboard, onNavigateToProducts, onNavigateToSales, onNavigateToReports }) => {
   const { user, signOut } = useAuth()
+  const { notifications, loading, executeNotificationAction, markAsRead, markAllAsRead } = useNotifications()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -35,48 +37,12 @@ const Header = ({ currentPage, onNavigateToDashboard, onNavigateToProducts, onNa
     await signOut()
   }
 
-  const notifications = [
-    { 
-      id: 1, 
-      title: 'Estoque Crítico', 
-      message: 'Produto "Leite Condensado" está sem estoque', 
-      time: '2 min', 
-      type: 'critical',
-      action: 'Ver produto'
-    },
-    { 
-      id: 2, 
-      title: 'Estoque Baixo', 
-      message: 'Produto "Café Premium" com apenas 3 unidades', 
-      time: '15 min', 
-      type: 'warning',
-      action: 'Repor estoque'
-    },
-    { 
-      id: 3, 
-      title: 'Movimentação Registrada', 
-      message: 'Entrada de 50 unidades de "Açúcar" registrada', 
-      time: '1 hora', 
-      type: 'success',
-      action: 'Ver movimentação'
-    },
-    { 
-      id: 4, 
-      title: 'Relatório Disponível', 
-      message: 'Relatório mensal de movimentações gerado', 
-      time: '2 horas', 
-      type: 'info',
-      action: 'Baixar relatório'
-    },
-    { 
-      id: 5, 
-      title: 'Produto Adicionado', 
-      message: 'Novo produto "Óleo de Soja" cadastrado', 
-      time: '3 horas', 
-      type: 'success',
-      action: 'Ver produto'
-    }
-  ]
+  // Função para executar ação da notificação
+  const handleNotificationAction = async (notification) => {
+    await executeNotificationAction(notification)
+    markAsRead(notification.id)
+    setIsNotificationsOpen(false)
+  }
 
   const userMenuItems = [
     { icon: User, label: 'Meu Perfil', action: () => console.log('Abrir perfil') },
@@ -87,7 +53,16 @@ const Header = ({ currentPage, onNavigateToDashboard, onNavigateToProducts, onNa
   ]
 
   return (
-    <header style={{
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <header style={{
       position: 'relative',
       background: 'linear-gradient(135deg, var(--gray-800) 0%, var(--gray-700) 50%, var(--gray-600) 100%)',
       boxShadow: 'var(--shadow-xl)',
@@ -516,19 +491,78 @@ const Header = ({ currentPage, onNavigateToDashboard, onNavigateToProducts, onNa
                     }}>
                       Notificações do Sistema
                     </h3>
-                    <span style={{
-                      background: '#ef4444',
-                      color: 'white',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '0.5rem'
-                    }}>
-                      {notifications.length}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#64748b',
+                            cursor: 'pointer',
+                            padding: '0.25rem',
+                            borderRadius: '0.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            fontSize: '0.75rem'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'
+                            e.target.style.color = '#3b82f6'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = 'transparent'
+                            e.target.style.color = '#64748b'
+                          }}
+                        >
+                          <CheckCheck size={12} />
+                          Marcar todas
+                        </button>
+                      )}
+                      <span style={{
+                        background: notifications.length > 0 ? '#ef4444' : '#10b981',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '0.5rem'
+                      }}>
+                        {notifications.length}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {notifications.map((notification) => (
+                    {loading ? (
+                      <div style={{
+                        padding: '2rem',
+                        textAlign: 'center',
+                        color: '#64748b'
+                      }}>
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          border: '2px solid #e2e8f0',
+                          borderTop: '2px solid #3b82f6',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite',
+                          margin: '0 auto 0.5rem'
+                        }}></div>
+                        Carregando notificações...
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div style={{
+                        padding: '2rem',
+                        textAlign: 'center',
+                        color: '#64748b'
+                      }}>
+                        <Bell size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                        <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                          Nenhuma notificação no momento
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
                       <div
                         key={notification.id}
                         style={{
@@ -590,37 +624,60 @@ const Header = ({ currentPage, onNavigateToDashboard, onNavigateToProducts, onNa
                         }}>
                           {notification.message}
                         </p>
-                        <button
-                          onClick={() => {
-                            console.log(`Ação: ${notification.action}`)
-                            setIsNotificationsOpen(false)
-                          }}
-                          style={{
-                            background: notification.type === 'critical' ? '#ef4444' :
-                                      notification.type === 'warning' ? '#f59e0b' :
-                                      notification.type === 'success' ? '#10b981' : '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.375rem',
-                            padding: '0.375rem 0.75rem',
-                            fontSize: '0.75rem',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.transform = 'translateY(-1px)'
-                            e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.transform = 'translateY(0)'
-                            e.target.style.boxShadow = 'none'
-                          }}
-                        >
-                          {notification.action}
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleNotificationAction(notification)}
+                            style={{
+                              background: notification.type === 'critical' ? '#ef4444' :
+                                        notification.type === 'warning' ? '#f59e0b' :
+                                        notification.type === 'success' ? '#10b981' : '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              padding: '0.375rem 0.75rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = 'translateY(-1px)'
+                              e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = 'translateY(0)'
+                              e.target.style.boxShadow = 'none'
+                            }}
+                          >
+                            {notification.action}
+                          </button>
+                          <button
+                            onClick={() => markAsRead(notification.id)}
+                            style={{
+                              background: 'none',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '0.375rem',
+                              padding: '0.375rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              color: '#64748b'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.backgroundColor = '#f1f5f9'
+                              e.target.style.borderColor = '#cbd5e1'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.backgroundColor = 'transparent'
+                              e.target.style.borderColor = '#e2e8f0'
+                            }}
+                            title="Marcar como lida"
+                          >
+                            <Check size={12} />
+                          </button>
+                        </div>
                       </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               )}
@@ -861,6 +918,7 @@ const Header = ({ currentPage, onNavigateToDashboard, onNavigateToProducts, onNa
         opacity: 0.6
       }}></div>
     </header>
+    </>
   )
 }
 

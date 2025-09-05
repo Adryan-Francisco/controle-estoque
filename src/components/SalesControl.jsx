@@ -48,14 +48,14 @@ const SalesControl = () => {
   const fetchProducts = async () => {
     try {
       const { data, error } = await supabase
-        .from('produtos')
+        .from('bolos')
         .select('*')
         .order('nome')
 
       if (error) throw error
       setProducts(data || [])
     } catch (error) {
-      console.error('Erro ao buscar produtos:', error)
+      console.error('Erro ao buscar bolos:', error)
     }
   }
 
@@ -74,12 +74,22 @@ const SalesControl = () => {
         return
       }
 
-      // Tentar buscar itens de venda separadamente
+      // Tentar buscar itens de venda com dados dos bolos
       let vendasComItens = []
       try {
         const { data: itens, error: itensError } = await supabase
           .from('venda_itens')
-          .select('*')
+          .select(`
+            *,
+            bolos (
+              id,
+              nome,
+              descricao,
+              preco,
+              preco_por_kg,
+              categoria
+            )
+          `)
 
         if (!itensError && itens) {
           // Mapear itens para vendas
@@ -715,7 +725,7 @@ const SalesControl = () => {
                                 fontWeight: '500'
                               }}
                             >
-                              {item.produtos?.nome} (x{item.quantidade})
+                              {item.bolos?.nome || 'Produto'} (x{item.quantidade})
                             </span>
                           ))}
                         </div>

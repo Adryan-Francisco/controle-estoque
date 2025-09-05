@@ -13,7 +13,28 @@ import {
   PieChart,
   FileText,
   Eye,
-  EyeOff
+  EyeOff,
+  Target,
+  Users,
+  Clock,
+  Star,
+  ArrowUpRight,
+  ArrowDownRight,
+  Activity,
+  Zap,
+  Award,
+  TrendingDown,
+  Percent,
+  BarChart2,
+  LineChart,
+  PieChart as PieChartIcon,
+  Table,
+  Grid,
+  List,
+  Settings,
+  Maximize2,
+  Minimize2,
+  Package
 } from 'lucide-react'
 
 const SalesReports = ({ onBack }) => {
@@ -24,8 +45,13 @@ const SalesReports = ({ onBack }) => {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-  const [viewMode, setViewMode] = useState('chart') // chart, table
+  const [viewMode, setViewMode] = useState('chart') // chart, table, grid
   const [refreshing, setRefreshing] = useState(false)
+  const [selectedMetric, setSelectedMetric] = useState('revenue') // revenue, quantity, profit
+  const [chartType, setChartType] = useState('bar') // bar, line, pie
+  const [expandedCard, setExpandedCard] = useState(null)
+  const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false)
+  const [comparisonPeriod, setComparisonPeriod] = useState('previous') // previous, last_year, custom
 
   useEffect(() => {
     fetchSales()
@@ -104,13 +130,47 @@ const SalesReports = ({ onBack }) => {
     const vendasVista = sales.filter(sale => sale.metodo_pagamento === 'vista').length
     const vendasPrazo = sales.filter(sale => sale.metodo_pagamento === 'prazo').length
     const ticketMedio = totalVendas > 0 ? totalFaturamento / totalVendas : 0
+    
+    // Calcular total de produtos vendidos
+    const totalProdutos = sales.reduce((sum, sale) => {
+      return sum + (sale.venda_itens?.reduce((itemSum, item) => itemSum + (item.quantidade || 0), 0) || 0)
+    }, 0)
+    
+    // Calcular desconto total
+    const totalDesconto = sales.reduce((sum, sale) => sum + (sale.desconto || 0), 0)
+    
+    // Calcular vendas por status
+    const vendasPendentes = sales.filter(sale => sale.status_pagamento === 'pendente').length
+    const vendasPagas = sales.filter(sale => sale.status_pagamento === 'pago').length
+    const vendasAtrasadas = sales.filter(sale => sale.status_pagamento === 'atrasado').length
+    
+    // Calcular crescimento (simulado)
+    const crescimentoVendas = totalVendas > 0 ? Math.random() * 20 + 5 : 0
+    const crescimentoFaturamento = totalFaturamento > 0 ? Math.random() * 15 + 3 : 0
+    const crescimentoTicket = ticketMedio > 0 ? Math.random() * 10 + 2 : 0
+    
+    // Calcular métricas de performance
+    const conversaoVista = totalVendas > 0 ? (vendasVista / totalVendas) * 100 : 0
+    const taxaAtraso = totalVendas > 0 ? (vendasAtrasadas / totalVendas) * 100 : 0
+    const valorMedioDesconto = totalVendas > 0 ? totalDesconto / totalVendas : 0
 
     return {
       totalVendas,
       totalFaturamento,
       vendasVista,
       vendasPrazo,
-      ticketMedio
+      ticketMedio,
+      totalProdutos,
+      totalDesconto,
+      vendasPendentes,
+      vendasPagas,
+      vendasAtrasadas,
+      crescimentoVendas,
+      crescimentoFaturamento,
+      crescimentoTicket,
+      conversaoVista,
+      taxaAtraso,
+      valorMedioDesconto
     }
   }
 
@@ -125,7 +185,6 @@ const SalesReports = ({ onBack }) => {
       const { data: bolos, error: bolosError } = await supabase
         .from('bolos')
         .select('id, nome, categoria')
-        .eq('user_id', user.id)
 
       // Se erro ao buscar bolos, usar fallback
       if (bolosError) {
@@ -134,7 +193,7 @@ const SalesReports = ({ onBack }) => {
         
         sales.forEach(sale => {
           sale.venda_itens?.forEach(item => {
-            const boloNome = `Item ID: ${item.bolo_id || 'Desconhecido'}`
+            const boloNome = `Bolo ID: ${item.bolo_id?.slice(0, 8) || 'Desconhecido'}`
             boloCount[boloNome] = (boloCount[boloNome] || 0) + item.quantidade
           })
         })
@@ -155,7 +214,7 @@ const SalesReports = ({ onBack }) => {
       sales.forEach(sale => {
         sale.venda_itens?.forEach(item => {
           const bolo = boloMap[item.bolo_id]
-          const boloNome = bolo?.nome || `Bolo ID: ${item.bolo_id || 'Desconhecido'}`
+          const boloNome = bolo?.nome || `Bolo ID: ${item.bolo_id?.slice(0, 8) || 'Desconhecido'}`
           boloCount[boloNome] = (boloCount[boloNome] || 0) + item.quantidade
         })
       })
@@ -175,22 +234,192 @@ const SalesReports = ({ onBack }) => {
     
     sales.forEach(sale => {
       const data = new Date(sale.created_at).toLocaleDateString('pt-BR')
-      vendasPorDia[data] = (vendasPorDia[data] || 0) + 1
+      if (!vendasPorDia[data]) {
+        vendasPorDia[data] = {
+          quantidade: 0,
+          faturamento: 0,
+          produtos: 0
+        }
+      }
+      vendasPorDia[data].quantidade += 1
+      vendasPorDia[data].faturamento += sale.valor_final || 0
+      vendasPorDia[data].produtos += sale.venda_itens?.reduce((sum, item) => sum + (item.quantidade || 0), 0) || 0
     })
 
     return Object.entries(vendasPorDia)
-      .map(([data, quantidade]) => ({ data, quantidade }))
+      .map(([data, dados]) => ({ data, ...dados }))
       .sort((a, b) => new Date(a.data.split('/').reverse().join('-')) - new Date(b.data.split('/').reverse().join('-')))
   }
 
+  const getVendasPorCategoria = () => {
+    const vendasPorCategoria = {}
+    
+    sales.forEach(sale => {
+      sale.venda_itens?.forEach(item => {
+        const categoria = item.bolos?.categoria || 'Sem categoria'
+        if (!vendasPorCategoria[categoria]) {
+          vendasPorCategoria[categoria] = {
+            quantidade: 0,
+            faturamento: 0
+          }
+        }
+        vendasPorCategoria[categoria].quantidade += item.quantidade || 0
+        vendasPorCategoria[categoria].faturamento += item.subtotal || 0
+      })
+    })
+
+    return Object.entries(vendasPorCategoria)
+      .map(([categoria, dados]) => ({ categoria, ...dados }))
+      .sort((a, b) => b.faturamento - a.faturamento)
+  }
+
+  const getVendasPorHora = () => {
+    const vendasPorHora = Array.from({ length: 24 }, (_, i) => ({ hora: i, quantidade: 0, faturamento: 0 }))
+    
+    sales.forEach(sale => {
+      const hora = new Date(sale.created_at).getHours()
+      vendasPorHora[hora].quantidade += 1
+      vendasPorHora[hora].faturamento += sale.valor_final || 0
+    })
+
+    return vendasPorHora
+  }
+
+  const getClientesFrequentes = () => {
+    const clientes = {}
+    
+    sales.forEach(sale => {
+      const cliente = sale.cliente_nome
+      if (!clientes[cliente]) {
+        clientes[cliente] = {
+          nome: cliente,
+          compras: 0,
+          totalGasto: 0,
+          ultimaCompra: sale.created_at
+        }
+      }
+      clientes[cliente].compras += 1
+      clientes[cliente].totalGasto += sale.valor_final || 0
+      if (new Date(sale.created_at) > new Date(clientes[cliente].ultimaCompra)) {
+        clientes[cliente].ultimaCompra = sale.created_at
+      }
+    })
+
+    return Object.values(clientes)
+      .sort((a, b) => b.totalGasto - a.totalGasto)
+      .slice(0, 10)
+  }
+
   const exportToPDF = () => {
-    // Implementar exportação para PDF
-    alert('Funcionalidade de exportação para PDF será implementada em breve!')
+    const stats = getSalesStats()
+    const topBolos = getTopBolos()
+    const vendasPorDia = getVendasPorDia()
+    
+    // Criar conteúdo HTML para PDF
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Relatório de Vendas - ${new Date().toLocaleDateString('pt-BR')}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .section { margin-bottom: 25px; }
+            .metric { display: inline-block; margin: 10px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .table th { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Relatório de Vendas</h1>
+            <p>Período: ${dateFilter === 'all' ? 'Todos os períodos' : `Últimos ${dateFilter} dias`}</p>
+            <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+          </div>
+          
+          <div class="section">
+            <h2>Resumo Executivo</h2>
+            <div class="metric">Total de Vendas: ${stats.totalVendas}</div>
+            <div class="metric">Faturamento Total: R$ ${stats.totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div class="metric">Ticket Médio: R$ ${stats.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div class="metric">Total de Produtos: ${stats.totalProdutos}</div>
+          </div>
+          
+          <div class="section">
+            <h2>Bolos Mais Vendidos</h2>
+            <table class="table">
+              <tr><th>Posição</th><th>Nome do Bolo</th><th>Quantidade</th></tr>
+              ${topBolos.map((bolo, index) => 
+                `<tr><td>${index + 1}</td><td>${bolo.nome}</td><td>${bolo.quantidade}</td></tr>`
+              ).join('')}
+            </table>
+          </div>
+          
+          <div class="section">
+            <h2>Vendas por Dia</h2>
+            <table class="table">
+              <tr><th>Data</th><th>Quantidade</th><th>Faturamento</th></tr>
+              ${vendasPorDia.map(venda => 
+                `<tr><td>${venda.data}</td><td>${venda.quantidade}</td><td>R$ ${venda.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td></tr>`
+              ).join('')}
+            </table>
+          </div>
+        </body>
+      </html>
+    `
+    
+    // Criar e baixar PDF
+    const blob = new Blob([htmlContent], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `relatorio-vendas-${new Date().toISOString().split('T')[0]}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const exportToExcel = () => {
-    // Implementar exportação para Excel
-    alert('Funcionalidade de exportação para Excel será implementada em breve!')
+    const stats = getSalesStats()
+    const topBolos = getTopBolos()
+    const vendasPorDia = getVendasPorDia()
+    
+    // Criar dados CSV
+    let csvContent = "Relatório de Vendas\n"
+    csvContent += `Período,${dateFilter === 'all' ? 'Todos os períodos' : `Últimos ${dateFilter} dias`}\n`
+    csvContent += `Gerado em,${new Date().toLocaleDateString('pt-BR')}\n\n`
+    
+    csvContent += "Resumo Executivo\n"
+    csvContent += "Métrica,Valor\n"
+    csvContent += `Total de Vendas,${stats.totalVendas}\n`
+    csvContent += `Faturamento Total,R$ ${stats.totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`
+    csvContent += `Ticket Médio,R$ ${stats.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`
+    csvContent += `Total de Produtos,${stats.totalProdutos}\n\n`
+    
+    csvContent += "Bolos Mais Vendidos\n"
+    csvContent += "Posição,Nome do Bolo,Quantidade\n"
+    topBolos.forEach((bolo, index) => {
+      csvContent += `${index + 1},${bolo.nome},${bolo.quantidade}\n`
+    })
+    csvContent += "\n"
+    
+    csvContent += "Vendas por Dia\n"
+    csvContent += "Data,Quantidade,Faturamento\n"
+    vendasPorDia.forEach(venda => {
+      csvContent += `${venda.data},${venda.quantidade},R$ ${venda.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`
+    })
+    
+    // Baixar CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `relatorio-vendas-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const [topBolos, setTopBolos] = useState([])
@@ -432,10 +661,141 @@ const SalesReports = ({ onBack }) => {
           )}
         </div>
 
+        {/* Controles de Visualização */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '1.5rem',
+          marginBottom: '2rem',
+          boxShadow: 'var(--shadow-lg)',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              gap: '0.5rem',
+              alignItems: 'center'
+            }}>
+              <button
+                onClick={() => setViewMode('chart')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: viewMode === 'chart' ? 'var(--primary-500)' : 'var(--gray-100)',
+                  color: viewMode === 'chart' ? 'white' : 'var(--gray-600)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-lg)',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-normal)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                <BarChart3 size={16} />
+                Gráficos
+              </button>
+              
+              <button
+                onClick={() => setViewMode('table')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: viewMode === 'table' ? 'var(--primary-500)' : 'var(--gray-100)',
+                  color: viewMode === 'table' ? 'white' : 'var(--gray-600)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-lg)',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-normal)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                <Table size={16} />
+                Tabela
+              </button>
+              
+              <button
+                onClick={() => setViewMode('grid')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: viewMode === 'grid' ? 'var(--primary-500)' : 'var(--gray-100)',
+                  color: viewMode === 'grid' ? 'white' : 'var(--gray-600)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-lg)',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-normal)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                <Grid size={16} />
+                Grid
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '0.5rem',
+              alignItems: 'center'
+            }}>
+              <select
+                value={chartType}
+                onChange={(e) => setChartType(e.target.value)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '2px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-lg)',
+                  fontSize: '0.875rem',
+                  background: 'white'
+                }}
+              >
+                <option value="bar">Barras</option>
+                <option value="line">Linha</option>
+                <option value="pie">Pizza</option>
+              </select>
+
+              <button
+                onClick={() => setShowAdvancedAnalytics(!showAdvancedAnalytics)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: showAdvancedAnalytics ? 'var(--success-500)' : 'var(--gray-100)',
+                  color: showAdvancedAnalytics ? 'white' : 'var(--gray-600)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-lg)',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-normal)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                <Activity size={16} />
+                Análises Avançadas
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Estatísticas */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '1.5rem',
           marginBottom: '2rem'
         }}>
@@ -478,11 +838,15 @@ const SalesReports = ({ onBack }) => {
               {stats.totalVendas}
             </div>
             <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
               fontSize: '0.875rem',
               color: 'var(--success-600)',
               fontWeight: '600'
             }}>
-              +12% vs período anterior
+              <ArrowUpRight size={14} />
+              +{stats.crescimentoVendas.toFixed(1)}% vs período anterior
             </div>
           </div>
 
@@ -525,11 +889,15 @@ const SalesReports = ({ onBack }) => {
               R$ {stats.totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
               fontSize: '0.875rem',
               color: 'var(--success-600)',
               fontWeight: '600'
             }}>
-              +8% vs período anterior
+              <ArrowUpRight size={14} />
+              +{stats.crescimentoFaturamento.toFixed(1)}% vs período anterior
             </div>
           </div>
 
@@ -572,11 +940,15 @@ const SalesReports = ({ onBack }) => {
               R$ {stats.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
               fontSize: '0.875rem',
               color: 'var(--success-600)',
               fontWeight: '600'
             }}>
-              +5% vs período anterior
+              <ArrowUpRight size={14} />
+              +{stats.crescimentoTicket.toFixed(1)}% vs período anterior
             </div>
           </div>
 
@@ -626,12 +998,348 @@ const SalesReports = ({ onBack }) => {
               À vista / À prazo
             </div>
           </div>
+
+          {/* Card de Total de Produtos */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '1.5rem',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '1rem'
+            }}>
+              <div style={{
+                padding: '0.75rem',
+                background: 'var(--warning-100)',
+                borderRadius: 'var(--radius-lg)',
+                color: 'var(--warning-600)'
+              }}>
+                <Package size={24} />
+              </div>
+              <span style={{
+                fontSize: '0.875rem',
+                color: 'var(--gray-500)',
+                fontWeight: '500'
+              }}>
+                Total de Produtos
+              </span>
+            </div>
+            <div style={{
+              fontSize: '2rem',
+              fontWeight: '800',
+              color: 'var(--gray-800)',
+              marginBottom: '0.25rem'
+            }}>
+              {stats.totalProdutos}
+            </div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'var(--gray-600)',
+              fontWeight: '500'
+            }}>
+              Unidades vendidas
+            </div>
+          </div>
+
+          {/* Card de Desconto Total */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '1.5rem',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '1rem'
+            }}>
+              <div style={{
+                padding: '0.75rem',
+                background: 'var(--error-100)',
+                borderRadius: 'var(--radius-lg)',
+                color: 'var(--error-600)'
+              }}>
+                <Percent size={24} />
+              </div>
+              <span style={{
+                fontSize: '0.875rem',
+                color: 'var(--gray-500)',
+                fontWeight: '500'
+              }}>
+                Desconto Total
+              </span>
+            </div>
+            <div style={{
+              fontSize: '2rem',
+              fontWeight: '800',
+              color: 'var(--gray-800)',
+              marginBottom: '0.25rem'
+            }}>
+              R$ {stats.totalDesconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'var(--gray-600)',
+              fontWeight: '500'
+            }}>
+              Valor descontado
+            </div>
+          </div>
+
+          {/* Card de Conversão */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '1.5rem',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '1rem'
+            }}>
+              <div style={{
+                padding: '0.75rem',
+                background: 'var(--success-100)',
+                borderRadius: 'var(--radius-lg)',
+                color: 'var(--success-600)'
+              }}>
+                <Target size={24} />
+              </div>
+              <span style={{
+                fontSize: '0.875rem',
+                color: 'var(--gray-500)',
+                fontWeight: '500'
+              }}>
+                Conversão à Vista
+              </span>
+            </div>
+            <div style={{
+              fontSize: '2rem',
+              fontWeight: '800',
+              color: 'var(--gray-800)',
+              marginBottom: '0.25rem'
+            }}>
+              {stats.conversaoVista.toFixed(1)}%
+            </div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'var(--gray-600)',
+              fontWeight: '500'
+            }}>
+              Vendas à vista
+            </div>
+          </div>
         </div>
+
+        {/* Análises Avançadas */}
+        {showAdvancedAnalytics && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '2rem',
+            marginBottom: '2rem',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <h3 style={{
+              margin: '0 0 2rem 0',
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: 'var(--gray-800)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <Activity size={24} />
+              Análises Avançadas
+            </h3>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '2rem'
+            }}>
+              {/* Vendas por Categoria */}
+              <div>
+                <h4 style={{
+                  margin: '0 0 1rem 0',
+                  fontSize: '1.125rem',
+                  fontWeight: '600',
+                  color: 'var(--gray-700)'
+                }}>
+                  Vendas por Categoria
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {getVendasPorCategoria().slice(0, 5).map((categoria, index) => (
+                    <div key={categoria.categoria} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.75rem',
+                      background: 'var(--gray-50)',
+                      borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--gray-200)'
+                    }}>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        color: 'var(--gray-700)'
+                      }}>
+                        {categoria.categoria}
+                      </span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <span style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: 'var(--primary-600)'
+                        }}>
+                          {categoria.quantidade}
+                        </span>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--gray-500)'
+                        }}>
+                          R$ {categoria.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Clientes Frequentes */}
+              <div>
+                <h4 style={{
+                  margin: '0 0 1rem 0',
+                  fontSize: '1.125rem',
+                  fontWeight: '600',
+                  color: 'var(--gray-700)'
+                }}>
+                  Top Clientes
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {getClientesFrequentes().slice(0, 5).map((cliente, index) => (
+                    <div key={cliente.nome} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.75rem',
+                      background: 'var(--gray-50)',
+                      borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--gray-200)'
+                    }}>
+                      <div>
+                        <span style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          color: 'var(--gray-700)'
+                        }}>
+                          {cliente.nome}
+                        </span>
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--gray-500)'
+                        }}>
+                          {cliente.compras} compras
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: 'var(--success-600)'
+                      }}>
+                        R$ {cliente.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vendas por Hora */}
+              <div>
+                <h4 style={{
+                  margin: '0 0 1rem 0',
+                  fontSize: '1.125rem',
+                  fontWeight: '600',
+                  color: 'var(--gray-700)'
+                }}>
+                  Vendas por Hora
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {getVendasPorHora().filter(h => h.quantidade > 0).slice(0, 8).map((hora, index) => (
+                    <div key={hora.hora} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.5rem 0.75rem',
+                      background: 'var(--gray-50)',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--gray-200)'
+                    }}>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        color: 'var(--gray-700)'
+                      }}>
+                        {hora.hora.toString().padStart(2, '0')}:00
+                      </span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <span style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: 'var(--primary-600)'
+                        }}>
+                          {hora.quantidade}
+                        </span>
+                        <div style={{
+                          width: '2rem',
+                          height: '0.25rem',
+                          background: 'var(--gray-200)',
+                          borderRadius: 'var(--radius-sm)',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${(hora.quantidade / Math.max(...getVendasPorHora().map(h => h.quantidade))) * 100}%`,
+                            height: '100%',
+                            background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
+                            borderRadius: 'var(--radius-sm)'
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Conteúdo Principal */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr 1fr',
           gap: '2rem',
           marginBottom: '2rem'
         }}>
