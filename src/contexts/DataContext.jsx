@@ -36,41 +36,23 @@ export const DataProvider = ({ children }) => {
 
     try {
       setLoading(true)
+      console.log('🔄 Buscando produtos...')
       
-      // Tentar buscar dados com retry
-      let retries = 3
-      let data = null
-      let error = null
-      
-      while (retries > 0) {
-        try {
-          const result = await supabase
-            .from('bolos')
-            .select('*')
-            .limit(10)
-          
-          data = result.data
-          error = result.error
-          
-          if (!error) break
-        } catch (err) {
-          console.log(`Tentativa ${4 - retries} falhou:`, err.message)
-          retries--
-          if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, 2000))
-          }
-        }
-      }
+      // Uma única tentativa simples
+      const { data, error } = await supabase
+        .from('bolos')
+        .select('*')
+        .limit(5) // Limitar a 5 registros para reduzir carga
 
       if (error) {
-        console.error('Erro ao buscar produtos após 3 tentativas:', error)
+        console.error('❌ Erro ao buscar produtos:', error)
         setProducts([])
       } else {
-        console.log('✅ Produtos carregados com sucesso:', data)
+        console.log('✅ Produtos carregados:', data?.length || 0, 'itens')
         setProducts(data || [])
       }
     } catch (error) {
-      console.error('Erro crítico ao buscar produtos:', error)
+      console.error('❌ Erro crítico ao buscar produtos:', error)
       setProducts([])
     } finally {
       setLoading(false)
@@ -85,20 +67,22 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      setLoading(true)
-      // Tentar buscar movimentações sem filtro primeiro
+      console.log('🔄 Buscando movimentações...')
       const { data, error } = await supabase
         .from('movimentacoes')
         .select('*')
-        .limit(10)
+        .limit(5)
 
-      if (error) throw error
-      setMovements(data || [])
+      if (error) {
+        console.error('❌ Erro ao buscar movimentações:', error)
+        setMovements([])
+      } else {
+        console.log('✅ Movimentações carregadas:', data?.length || 0, 'itens')
+        setMovements(data || [])
+      }
     } catch (error) {
-      console.error('Erro ao buscar movimentações:', error)
+      console.error('❌ Erro crítico ao buscar movimentações:', error)
       setMovements([])
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -110,21 +94,22 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      setLoading(true)
-      // Usar user_id que confirmamos que existe
+      console.log('🔄 Buscando vendas...')
       const { data, error } = await supabase
         .from('vendas')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .limit(5)
 
-      if (error) throw error
-      setSales(data || [])
+      if (error) {
+        console.error('❌ Erro ao buscar vendas:', error)
+        setSales([])
+      } else {
+        console.log('✅ Vendas carregadas:', data?.length || 0, 'itens')
+        setSales(data || [])
+      }
     } catch (error) {
-      console.error('Erro ao buscar vendas:', error)
+      console.error('❌ Erro crítico ao buscar vendas:', error)
       setSales([])
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -310,16 +295,9 @@ export const DataProvider = ({ children }) => {
   // Limpar dados quando usuário mudar
   useEffect(() => {
     if (user) {
-      // Aguardar mais tempo antes de carregar dados para evitar sobrecarga
-      const timer = setTimeout(() => {
-        if (products.length === 0) {
-          console.log('👤 Usuário logado, iniciando carregamento de dados...')
-          // Carregar apenas produtos inicialmente
-          fetchProducts()
-        }
-      }, 3000) // Aguardar 3 segundos
-      
-      return () => clearTimeout(timer)
+      console.log('👤 Usuário logado:', user.email)
+      // Não carregar dados automaticamente para evitar ERR_INSUFFICIENT_RESOURCES
+      // O usuário deve clicar no botão "Carregar Dados" manualmente
     } else {
       clearAllData()
     }
