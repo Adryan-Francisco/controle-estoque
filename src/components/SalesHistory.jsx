@@ -175,134 +175,273 @@ const SalesHistory = ({ onBack }) => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%)',
-      padding: '20px'
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px',
+      position: 'relative'
     }}>
-      <div className="max-w-7xl mx-auto">
+      {/* Decorative elements */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '200px',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+        borderRadius: '0 0 50px 50px'
+      }} />
+      
+      <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6 transition-colors"
+            className="flex items-center gap-3 text-white hover:text-gray-200 mb-8 transition-all duration-300 group"
             style={{
-              background: 'white',
-              padding: '12px 20px',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-              width: 'fit-content'
+              background: 'rgba(255, 255, 255, 0.15)',
+              backdropFilter: 'blur(10px)',
+              padding: '14px 24px',
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              width: 'fit-content',
+              transform: 'translateY(0)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'
             }}
           >
             <ArrowLeft size={20} />
-            <span className="font-medium">Voltar</span>
+            <span className="font-semibold">Voltar ao Dashboard</span>
           </button>
           
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Histórico de Vendas</h1>
-            <p className="text-gray-600 text-lg">Acompanhe todas as vendas realizadas</p>
+          <div className="text-center mb-12">
+            <h1 className="text-6xl font-bold text-white mb-4" style={{
+              textShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
+              Histórico de Vendas
+            </h1>
+            <p className="text-xl text-white/90 font-medium" style={{
+              textShadow: '0 2px 10px rgba(0, 0, 0, 0.2)'
+            }}>
+              Acompanhe todas as vendas realizadas em tempo real
+            </p>
           </div>
         </div>
 
         {/* Cards de Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '1.5rem',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e2e8f0'
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            transform: 'translateY(0)',
+            transition: 'all 0.3s ease',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)'
+            e.currentTarget.style.boxShadow = '0 30px 60px rgba(0, 0, 0, 0.15)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.1)'
           }}>
-            <div className="flex items-center justify-between">
+            {/* Decorative gradient */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              borderRadius: '0 20px 0 100px',
+              opacity: 0.1
+            }} />
+            
+            <div className="flex items-center justify-between relative z-10">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total de Vendas</p>
-                <p className="text-3xl font-bold text-gray-900">{filteredSales.length}</p>
-                <p className="text-sm text-blue-600">• Vendas realizadas</p>
+                <p className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total de Vendas</p>
+                <p className="text-4xl font-bold text-gray-900 mb-2">{filteredSales.length}</p>
+                <p className="text-sm text-blue-600 font-medium">• Vendas realizadas</p>
               </div>
               <div style={{
                 background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                borderRadius: '12px',
-                padding: '12px',
-                color: 'white'
+                borderRadius: '16px',
+                padding: '16px',
+                color: 'white',
+                boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)'
               }}>
-                <ShoppingCart size={24} />
+                <ShoppingCart size={28} />
               </div>
             </div>
           </div>
 
           <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '1.5rem',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e2e8f0'
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            transform: 'translateY(0)',
+            transition: 'all 0.3s ease',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)'
+            e.currentTarget.style.boxShadow = '0 30px 60px rgba(0, 0, 0, 0.15)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.1)'
           }}>
-            <div className="flex items-center justify-between">
+            {/* Decorative gradient */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              borderRadius: '0 20px 0 100px',
+              opacity: 0.1
+            }} />
+            
+            <div className="flex items-center justify-between relative z-10">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Valor Total</p>
-                <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalValue)}</p>
-                <p className="text-sm text-green-600">• Faturamento</p>
+                <p className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">Valor Total</p>
+                <p className="text-4xl font-bold text-gray-900 mb-2">{formatCurrency(totalValue)}</p>
+                <p className="text-sm text-green-600 font-medium">• Faturamento</p>
               </div>
               <div style={{
                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                borderRadius: '12px',
-                padding: '12px',
-                color: 'white'
+                borderRadius: '16px',
+                padding: '16px',
+                color: 'white',
+                boxShadow: '0 8px 20px rgba(16, 185, 129, 0.3)'
               }}>
-                <DollarSign size={24} />
+                <DollarSign size={28} />
               </div>
             </div>
           </div>
 
           <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '1.5rem',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e2e8f0'
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            transform: 'translateY(0)',
+            transition: 'all 0.3s ease',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)'
+            e.currentTarget.style.boxShadow = '0 30px 60px rgba(0, 0, 0, 0.15)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.1)'
           }}>
-            <div className="flex items-center justify-between">
+            {/* Decorative gradient */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              borderRadius: '0 20px 0 100px',
+              opacity: 0.1
+            }} />
+            
+            <div className="flex items-center justify-between relative z-10">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Ticket Médio</p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">Ticket Médio</p>
+                <p className="text-4xl font-bold text-gray-900 mb-2">
                   {filteredSales.length > 0 ? formatCurrency(totalValue / filteredSales.length) : 'R$ 0,00'}
                 </p>
-                <p className="text-sm text-orange-600">• Por venda</p>
+                <p className="text-sm text-orange-600 font-medium">• Por venda</p>
               </div>
               <div style={{
                 background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                borderRadius: '12px',
-                padding: '12px',
-                color: 'white'
+                borderRadius: '16px',
+                padding: '16px',
+                color: 'white',
+                boxShadow: '0 8px 20px rgba(245, 158, 11, 0.3)'
               }}>
-                <TrendingUp size={24} />
+                <TrendingUp size={28} />
               </div>
             </div>
           </div>
 
           <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '1.5rem',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e2e8f0'
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            transform: 'translateY(0)',
+            transition: 'all 0.3s ease',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)'
+            e.currentTarget.style.boxShadow = '0 30px 60px rgba(0, 0, 0, 0.15)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.1)'
           }}>
-            <div className="flex items-center justify-between">
+            {/* Decorative gradient */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+              borderRadius: '0 20px 0 100px',
+              opacity: 0.1
+            }} />
+            
+            <div className="flex items-center justify-between relative z-10">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Período</p>
-                <p className="text-lg font-bold text-gray-900">
+                <p className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">Período</p>
+                <p className="text-2xl font-bold text-gray-900 mb-2">
                   {filter === 'all' ? 'Todas' : 
                    filter === 'today' ? 'Hoje' :
                    filter === 'week' ? 'Última Semana' : 'Último Mês'}
                 </p>
-                <p className="text-sm text-purple-600">• Filtro ativo</p>
+                <p className="text-sm text-purple-600 font-medium">• Filtro ativo</p>
               </div>
               <div style={{
                 background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                borderRadius: '12px',
-                padding: '12px',
-                color: 'white'
+                borderRadius: '16px',
+                padding: '16px',
+                color: 'white',
+                boxShadow: '0 8px 20px rgba(139, 92, 246, 0.3)'
               }}>
-                <Calendar size={24} />
+                <Calendar size={28} />
               </div>
             </div>
           </div>
@@ -310,29 +449,48 @@ const SalesHistory = ({ onBack }) => {
 
         {/* Filtros */}
         <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '1.5rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e2e8f0',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          padding: '2rem',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
           marginBottom: '2rem'
         }}>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-3 mb-6">
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              padding: '8px',
+              color: 'white'
+            }}>
+              <Calendar size={20} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">Filtros de Período</h3>
+          </div>
+          
+          <div className="flex flex-wrap gap-4">
             {[
-              { key: 'all', label: 'Todas' },
-              { key: 'today', label: 'Hoje' },
-              { key: 'week', label: 'Última Semana' },
-              { key: 'month', label: 'Último Mês' }
-            ].map(({ key, label }) => (
+              { key: 'all', label: 'Todas', icon: '📊' },
+              { key: 'today', label: 'Hoje', icon: '📅' },
+              { key: 'week', label: 'Última Semana', icon: '📈' },
+              { key: 'month', label: 'Último Mês', icon: '🗓️' }
+            ].map(({ key, label, icon }) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === key 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                  filter === key
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 hover:shadow-md border border-gray-200'
                 }`}
+                style={{
+                  boxShadow: filter === key 
+                    ? '0 10px 25px rgba(59, 130, 246, 0.3)' 
+                    : '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
               >
+                <span className="text-lg">{icon}</span>
                 {label}
               </button>
             ))}
@@ -341,25 +499,26 @@ const SalesHistory = ({ onBack }) => {
 
         {/* Lista de Vendas */}
         <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '1.5rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e2e8f0'
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          padding: '2rem',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Histórico de Vendas</h2>
-              <p className="text-sm text-gray-600">Lista detalhada de todas as vendas</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Histórico de Vendas</h2>
+              <p className="text-lg text-gray-600">Lista detalhada de todas as vendas realizadas</p>
             </div>
             <button
               onClick={() => refreshAllData(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Atualizar
+              Atualizar Dados
             </button>
           </div>
 
@@ -387,26 +546,43 @@ const SalesHistory = ({ onBack }) => {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredSales.map((sale, index) => (
-                <div 
-                  key={sale.id} 
-                  style={{
-                    background: '#f8fafc',
-                    borderRadius: '8px',
-                    padding: '1rem',
-                    border: '1px solid #e2e8f0',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f1f5f9'
-                    e.currentTarget.style.borderColor = '#cbd5e1'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#f8fafc'
-                    e.currentTarget.style.borderColor = '#e2e8f0'
-                  }}
-                >
+                                  <div className="space-y-6">
+                        {filteredSales.map((sale, index) => (
+                          <div
+                            key={sale.id}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.8)',
+                              backdropFilter: 'blur(10px)',
+                              borderRadius: '16px',
+                              padding: '1.5rem',
+                              border: '1px solid rgba(255, 255, 255, 0.3)',
+                              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                              transition: 'all 0.3s ease',
+                              position: 'relative',
+                              overflow: 'hidden'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-4px)'
+                              e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)'
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)'
+                              e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.1)'
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)'
+                            }}
+                          >
+                            {/* Decorative gradient */}
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              right: 0,
+                              width: '60px',
+                              height: '60px',
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              borderRadius: '0 16px 0 60px',
+                              opacity: 0.1
+                            }} />
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     {/* Informações do Cliente */}
                     <div className="flex-1">
@@ -434,19 +610,19 @@ const SalesHistory = ({ onBack }) => {
                         </div>
                         
                         {/* Botões de Ação */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <button
                             onClick={() => handleEditSale(sale)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-all duration-300 hover:shadow-md hover:scale-105 border border-blue-200"
                           >
-                            <Edit size={12} />
+                            <Edit size={16} />
                             Editar
                           </button>
                           <button
                             onClick={() => handleDeleteSale(sale.id)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-300 hover:shadow-md hover:scale-105 border border-red-200"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={16} />
                             Excluir
                           </button>
                         </div>
