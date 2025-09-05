@@ -518,15 +518,19 @@ export const DataProvider = ({ children }) => {
         console.log('🔍 Dados do bolo para inserção:', boloDataToInsert)
         
         // Tentar salvar no Supabase primeiro
+        console.log('🔄 Enviando requisição para Supabase...')
         const { data, error } = await supabase
           .from('bolos')
           .insert([boloDataToInsert])
           .select()
 
+        console.log('📡 Resposta do Supabase:', { data, error })
+
         if (error) {
           console.error('❌ Erro ao salvar bolo no Supabase:', error)
           console.error('❌ Código do erro:', error.code)
           console.error('❌ Mensagem do erro:', error.message)
+          console.error('❌ Detalhes completos:', JSON.stringify(error, null, 2))
           
           // Se der erro no Supabase, salvar localmente
           const newBolo = {

@@ -178,6 +178,63 @@ const SupabaseTest = () => {
         }
       }
 
+      // Teste 8: Verificar tabela bolos especificamente
+      if (currentUser) {
+        addTestResult('🔍 Testando tabela bolos...', 'info')
+        
+        try {
+          // Testar SELECT na tabela bolos
+          const { data: bolosSelect, error: bolosSelectError } = await supabase
+            .from('bolos')
+            .select('*')
+            .limit(1)
+          
+          if (bolosSelectError) {
+            addTestResult(`❌ Erro no SELECT bolos: ${bolosSelectError.message}`, 'error')
+            addTestResult(`❌ Código: ${bolosSelectError.code}`, 'error')
+          } else {
+            addTestResult('✅ SELECT bolos funcionando', 'success')
+          }
+
+          // Testar INSERT na tabela bolos
+          addTestResult('🔍 Testando INSERT na tabela bolos...', 'info')
+          const testBolo = {
+            nome: 'Bolo Teste',
+            descricao: 'Teste de inserção',
+            preco_por_kg: 25.00,
+            categoria: 'Tradicional',
+            disponivel: true,
+            user_id: currentUser.id
+          }
+
+          const { data: boloInsert, error: boloInsertError } = await supabase
+            .from('bolos')
+            .insert([testBolo])
+            .select()
+
+          if (boloInsertError) {
+            addTestResult(`❌ Erro no INSERT bolos: ${boloInsertError.message}`, 'error')
+            addTestResult(`❌ Código: ${boloInsertError.code}`, 'error')
+            
+            if (boloInsertError.code === '42501') {
+              addTestResult('🔒 Erro de RLS na tabela bolos', 'error')
+              addTestResult('💡 Solução: Configure políticas RLS para a tabela bolos', 'info')
+            }
+          } else {
+            addTestResult(`✅ INSERT bolos funcionando! ID: ${boloInsert[0]?.id}`, 'success')
+            
+            // Deletar o bolo de teste
+            await supabase
+              .from('bolos')
+              .delete()
+              .eq('id', boloInsert[0].id)
+            addTestResult('🗑️ Bolo de teste removido', 'info')
+          }
+        } catch (bolosTestError) {
+          addTestResult(`❌ Erro no teste bolos: ${bolosTestError.message}`, 'error')
+        }
+      }
+
     } catch (error) {
       addTestResult(`❌ Erro crítico: ${error.message}`, 'error')
     } finally {
