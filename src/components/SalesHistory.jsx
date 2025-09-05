@@ -102,150 +102,273 @@ const SalesHistory = ({ onBack }) => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, var(--primary-50) 0%, var(--secondary-50) 50%, var(--gray-50) 100%)',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       padding: '20px'
     }}>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4 transition-colors"
+            className="flex items-center gap-3 text-white hover:text-gray-200 mb-6 transition-all duration-300 group"
+            style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+              padding: '12px 20px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              width: 'fit-content'
+            }}
           >
-            <ArrowLeft size={20} />
-            Voltar
+            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform duration-300" />
+            <span className="font-medium">Voltar</span>
           </button>
           
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Histórico de Vendas</h1>
-          <p className="text-gray-600">Acompanhe todas as vendas realizadas</p>
+          <div className="text-center mb-8">
+            <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+              Histórico de Vendas
+            </h1>
+            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+              Acompanhe todas as vendas realizadas com análises detalhadas e insights valiosos
+            </p>
+          </div>
         </div>
 
         {/* Filtros e Estatísticas */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          padding: '2rem',
+          marginBottom: '2rem',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Filtros */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === 'all' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Todas
-              </button>
-              <button
-                onClick={() => setFilter('today')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === 'today' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Hoje
-              </button>
-              <button
-                onClick={() => setFilter('week')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === 'week' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Última Semana
-              </button>
-              <button
-                onClick={() => setFilter('month')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === 'month' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Último Mês
-              </button>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { key: 'all', label: 'Todas', icon: '📊' },
+                { key: 'today', label: 'Hoje', icon: '📅' },
+                { key: 'week', label: 'Última Semana', icon: '📈' },
+                { key: 'month', label: 'Último Mês', icon: '📆' }
+              ].map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key)}
+                  className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${
+                    filter === key 
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg border border-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">{icon}</span>
+                  {label}
+                </button>
+              ))}
             </div>
 
             {/* Estatísticas */}
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Total de Vendas</p>
-                <p className="text-2xl font-bold text-gray-900">{filteredSales.length}</p>
+            <div className="flex items-center gap-8">
+              <div className="text-center">
+                <div style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  minWidth: '140px',
+                  color: 'white'
+                }}>
+                  <p className="text-sm font-medium opacity-90 mb-1">Total de Vendas</p>
+                  <p className="text-3xl font-bold">{filteredSales.length}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Valor Total</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalValue)}</p>
+              <div className="text-center">
+                <div style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  minWidth: '140px',
+                  color: 'white'
+                }}>
+                  <p className="text-sm font-medium opacity-90 mb-1">Valor Total</p>
+                  <p className="text-3xl font-bold">{formatCurrency(totalValue)}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Lista de Vendas */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          padding: '2rem',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
           {filteredSales.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma venda encontrada</h3>
-              <p className="text-gray-600">
+            <div className="text-center py-16">
+              <div style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '50%',
+                width: '120px',
+                height: '120px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 2rem',
+                boxShadow: '0 20px 40px rgba(102, 126, 234, 0.3)'
+              }}>
+                <Calendar size={48} className="text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Nenhuma venda encontrada</h3>
+              <p className="text-lg text-gray-600 max-w-md mx-auto">
                 {filter === 'all' 
-                  ? 'Ainda não há vendas cadastradas no sistema.'
-                  : `Não há vendas no período selecionado.`
+                  ? 'Ainda não há vendas cadastradas no sistema. Comece realizando sua primeira venda!'
+                  : `Não há vendas no período selecionado. Tente outro filtro.`
                 }
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredSales.map((sale) => (
-                <div key={sale.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="space-y-6">
+              {filteredSales.map((sale, index) => (
+                <div 
+                  key={sale.id} 
+                  className="group relative overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
+                    borderRadius: '16px',
+                    padding: '1.5rem',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                    transition: 'all 0.3s ease',
+                    transform: 'translateY(0)',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)'
+                    e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  {/* Badge de número da venda */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '1rem',
+                    right: '1rem',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {index + 1}
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
                     {/* Informações do Cliente */}
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <User size={16} className="text-gray-500" />
-                        <h3 className="font-semibold text-gray-900">{sale.cliente_nome}</h3>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          borderRadius: '12px',
+                          padding: '8px',
+                          color: 'white'
+                        }}>
+                          <User size={20} />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900">{sale.cliente_nome}</h3>
                       </div>
                       
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          <span>{formatDate(sale.created_at)}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div style={{
+                            background: 'rgba(102, 126, 234, 0.1)',
+                            borderRadius: '8px',
+                            padding: '6px',
+                            color: '#667eea'
+                          }}>
+                            <Calendar size={16} />
+                          </div>
+                          <span className="font-medium">{formatDate(sale.created_at)}</span>
                         </div>
                         
                         {sale.cliente_email && (
-                          <div className="flex items-center gap-1">
-                            <Mail size={14} />
-                            <span>{sale.cliente_email}</span>
+                          <div className="flex items-center gap-2">
+                            <div style={{
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              borderRadius: '8px',
+                              padding: '6px',
+                              color: '#10b981'
+                            }}>
+                              <Mail size={16} />
+                            </div>
+                            <span className="font-medium">{sale.cliente_email}</span>
                           </div>
                         )}
                         
                         {sale.cliente_telefone && (
-                          <div className="flex items-center gap-1">
-                            <Phone size={14} />
-                            <span>{sale.cliente_telefone}</span>
+                          <div className="flex items-center gap-2">
+                            <div style={{
+                              background: 'rgba(245, 158, 11, 0.1)',
+                              borderRadius: '8px',
+                              padding: '6px',
+                              color: '#f59e0b'
+                            }}>
+                              <Phone size={16} />
+                            </div>
+                            <span className="font-medium">{sale.cliente_telefone}</span>
                           </div>
                         )}
                       </div>
                       
                       {sale.observacoes && (
-                        <p className="text-sm text-gray-600 mt-2 italic">
-                          "{sale.observacoes}"
-                        </p>
+                        <div style={{
+                          background: 'rgba(59, 130, 246, 0.05)',
+                          border: '1px solid rgba(59, 130, 246, 0.1)',
+                          borderRadius: '12px',
+                          padding: '1rem',
+                          marginTop: '1rem'
+                        }}>
+                          <p className="text-sm text-gray-700 italic">
+                            💬 "{sale.observacoes}"
+                          </p>
+                        </div>
                       )}
                     </div>
 
                     {/* Valor e Pagamento */}
-                    <div className="flex flex-col lg:items-end gap-2">
-                      <div className="flex items-center gap-2">
-                        <DollarSign size={16} className="text-green-600" />
-                        <span className="text-xl font-bold text-green-600">
+                    <div className="flex flex-col items-end gap-4">
+                      <div style={{
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        borderRadius: '16px',
+                        padding: '1.5rem',
+                        color: 'white',
+                        textAlign: 'center',
+                        minWidth: '160px',
+                        boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)'
+                      }}>
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <DollarSign size={20} />
+                          <span className="text-sm font-medium opacity-90">Valor Total</span>
+                        </div>
+                        <div className="text-2xl font-bold">
                           {formatCurrency(sale.valor_total || 0)}
-                        </span>
+                        </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <CreditCard size={14} className="text-gray-500" />
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentMethodColor(sale.metodo_pagamento)}`}>
+                        <CreditCard size={16} className="text-gray-500" />
+                        <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getPaymentMethodColor(sale.metodo_pagamento)}`}>
                           {getPaymentMethodLabel(sale.metodo_pagamento)}
                         </span>
                       </div>
@@ -254,13 +377,46 @@ const SalesHistory = ({ onBack }) => {
 
                   {/* Itens da Venda */}
                   {sale.itens && sale.itens.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Itens:</h4>
-                      <div className="space-y-1">
-                        {sale.itens.map((item, index) => (
-                          <div key={index} className="flex justify-between text-sm text-gray-600">
-                            <span>{item.nome} ({item.peso}kg)</span>
-                            <span>{formatCurrency(item.preco_total || 0)}</span>
+                    <div style={{
+                      marginTop: '1.5rem',
+                      padding: '1.5rem',
+                      background: 'rgba(248, 250, 252, 0.8)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(226, 232, 240, 0.5)'
+                    }}>
+                      <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <Package size={20} className="text-blue-600" />
+                        Itens da Venda
+                      </h4>
+                      <div className="grid gap-3">
+                        {sale.itens.map((item, itemIndex) => (
+                          <div key={itemIndex} className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-100">
+                            <div className="flex items-center gap-3">
+                              <div style={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                borderRadius: '8px',
+                                padding: '6px',
+                                color: 'white',
+                                fontSize: '0.875rem',
+                                fontWeight: 'bold',
+                                minWidth: '24px',
+                                textAlign: 'center'
+                              }}>
+                                {itemIndex + 1}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-gray-900">{item.nome}</span>
+                                <span className="text-sm text-gray-600 ml-2">({item.peso}kg)</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-green-600">
+                                {formatCurrency(item.preco_total || 0)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {formatCurrency(item.preco_por_kg)}/kg
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -273,12 +429,68 @@ const SalesHistory = ({ onBack }) => {
         </div>
 
         {/* Botão de Atualizar */}
-        <div className="mt-6 text-center">
+        <div className="mt-8 text-center">
           <button
             onClick={() => refreshAllData(true)}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="group relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '16px',
+              padding: '1rem 2rem',
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.75rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.boxShadow = '0 15px 35px rgba(102, 126, 234, 0.4)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '0 10px 25px rgba(102, 126, 234, 0.3)'
+            }}
           >
-            Atualizar Dados
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <svg 
+                className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <span>Atualizar Dados</span>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '-100%',
+              width: '100%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+              transition: 'left 0.5s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.left = '100%'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.left = '-100%'
+            }}
+            />
           </button>
         </div>
       </div>
