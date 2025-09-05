@@ -6,6 +6,7 @@ import { Package, Plus, ArrowLeft, Search, Filter, Edit, Trash2, RefreshCw, Eye,
 const ProductsPage = ({ onBack }) => {
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [viewingProduct, setViewingProduct] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortField, setSortField] = useState('nome')
@@ -44,6 +45,10 @@ const ProductsPage = ({ onBack }) => {
   const handleEditProduct = (product) => {
     setEditingProduct(product)
     setShowForm(true)
+  }
+
+  const handleViewProduct = (product) => {
+    setViewingProduct(product)
   }
 
   const handleDeleteProduct = async (productId) => {
@@ -734,9 +739,9 @@ const ProductsPage = ({ onBack }) => {
                     <td style={{ padding: '1rem 0.5rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button
-                          onClick={() => {/* Visualizar */}}
+                          onClick={() => handleViewProduct(product)}
                           style={{
-                            background: '#8b5cf6',
+                            background: '#3b82f6',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
@@ -744,8 +749,10 @@ const ProductsPage = ({ onBack }) => {
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            transition: 'all 0.2s'
                           }}
+                          title="Visualizar produto"
                         >
                           <Eye size={16} />
                         </button>
@@ -753,7 +760,7 @@ const ProductsPage = ({ onBack }) => {
                         <button
                           onClick={() => handleEditProduct(product)}
                           style={{
-                            background: '#8b5cf6',
+                            background: '#10b981',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
@@ -761,10 +768,31 @@ const ProductsPage = ({ onBack }) => {
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            transition: 'all 0.2s'
                           }}
+                          title="Editar produto"
                         >
                           <Edit size={16} />
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDeleteProduct(product.id)}
+                          style={{
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '0.5rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s'
+                          }}
+                          title="Excluir produto"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -820,6 +848,254 @@ const ProductsPage = ({ onBack }) => {
                 onSave={handleSaveProduct}
                 onCancel={handleCancelForm}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Visualização */}
+      {viewingProduct && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: '#1e293b',
+                margin: 0
+              }}>
+                Detalhes do Produto
+              </h2>
+              <button
+                onClick={() => setViewingProduct(null)}
+                style={{
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                marginBottom: '2rem'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: '#3b82f6',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  fontWeight: '600'
+                }}>
+                  {getInitial(viewingProduct.nome)}
+                </div>
+                <div>
+                  <h3 style={{
+                    fontSize: '1.25rem',
+                    fontWeight: '600',
+                    color: '#1e293b',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    {viewingProduct.nome}
+                  </h3>
+                  <p style={{
+                    color: '#64748b',
+                    margin: 0,
+                    fontSize: '0.9rem'
+                  }}>
+                    ID: {viewingProduct.id}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+                marginBottom: '2rem'
+              }}>
+                <div style={{
+                  background: '#f8fafc',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <h4 style={{
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    color: '#64748b',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    Quantidade
+                  </h4>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
+                    color: '#1e293b',
+                    margin: 0
+                  }}>
+                    {viewingProduct.quantidade || 0}
+                  </p>
+                </div>
+
+                <div style={{
+                  background: '#f8fafc',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <h4 style={{
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    color: '#64748b',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    Valor Unitário
+                  </h4>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
+                    color: '#1e293b',
+                    margin: 0
+                  }}>
+                    {formatCurrency(viewingProduct.valor_unit || 0)}
+                  </p>
+                </div>
+
+                <div style={{
+                  background: '#f0fdf4',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  <h4 style={{
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    color: '#166534',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    Valor Total
+                  </h4>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
+                    color: '#166534',
+                    margin: 0
+                  }}>
+                    {formatCurrency(viewingProduct.valor_total || 0)}
+                  </p>
+                </div>
+
+                <div style={{
+                  background: '#f8fafc',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <h4 style={{
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    color: '#64748b',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    Estoque
+                  </h4>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '700',
+                    color: '#1e293b',
+                    margin: 0
+                  }}>
+                    {viewingProduct.estoque || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '1rem'
+              }}>
+                <button
+                  onClick={() => setViewingProduct(null)}
+                  style={{
+                    background: '#64748b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Fechar
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setViewingProduct(null)
+                    handleEditProduct(viewingProduct)
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Editar Produto
+                </button>
+              </div>
             </div>
           </div>
         </div>
