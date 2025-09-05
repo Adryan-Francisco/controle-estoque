@@ -42,9 +42,18 @@ export const DataProvider = ({ children }) => {
       const mockProducts = [
         {
           id: 1,
-          nome: 'Produto Exemplo',
+          nome: 'Bolo de Chocolate',
+          descricao: 'Delicioso bolo de chocolate',
+          preco: 25.50,
           estoque: 10,
-          valor_unit: 25.50,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 2,
+          nome: 'Bolo de Morango',
+          descricao: 'Bolo de morango com creme',
+          preco: 30.00,
+          estoque: 5,
           created_at: new Date().toISOString()
         }
       ]
@@ -275,20 +284,31 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      const { data, error } = await supabase
-        .from('movimentacoes')
-        .insert([{
-          ...movementData,
-          usuario_id: user.id,
-          created_at: new Date().toISOString()
-        }])
-        .select()
-
-      if (error) throw error
+      const newMovement = {
+        id: Date.now(),
+        ...movementData,
+        user_id: user.id,
+        created_at: new Date().toISOString()
+      }
       
-      // Atualizar lista local
-      setMovements(prev => [data[0], ...prev])
-      return { data: data[0], error: null }
+      setMovements(prev => [newMovement, ...prev])
+      
+      try {
+        const { data, error } = await supabase
+          .from('movimentacoes')
+          .insert([newMovement])
+          .select()
+
+        if (error) {
+          console.log('⚠️ Movimentação salva localmente')
+        } else {
+          console.log('✅ Movimentação salva no Supabase')
+        }
+      } catch (networkError) {
+        console.log('⚠️ Movimentação salva localmente')
+      }
+      
+      return { data: newMovement, error: null }
     } catch (error) {
       console.error('Erro ao adicionar movimentação:', error)
       return { data: null, error }
@@ -300,27 +320,38 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      const { data, error } = await supabase
-        .from('vendas')
-        .insert([{
-          ...saleData,
-          user_id: user.id,
-          created_at: new Date().toISOString()
-        }])
-        .select()
-
-      if (error) throw error
+      const newSale = {
+        id: Date.now(),
+        ...saleData,
+        user_id: user.id,
+        created_at: new Date().toISOString()
+      }
       
-      // Atualizar lista local
-      setSales(prev => [data[0], ...prev])
-      return { data: data[0], error: null }
+      setSales(prev => [newSale, ...prev])
+      
+      try {
+        const { data, error } = await supabase
+          .from('vendas')
+          .insert([newSale])
+          .select()
+
+        if (error) {
+          console.log('⚠️ Venda salva localmente')
+        } else {
+          console.log('✅ Venda salva no Supabase')
+        }
+      } catch (networkError) {
+        console.log('⚠️ Venda salva localmente')
+      }
+      
+      return { data: newSale, error: null }
     } catch (error) {
       console.error('Erro ao adicionar venda:', error)
       return { data: null, error }
     }
   }
 
-  // Recarregar todos os dados
+  // Recarregar todos os dados (agora chamado manualmente)
   const refreshAllData = async () => {
     if (!user) {
       clearAllData()
@@ -346,37 +377,7 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-  // Escutar eventos de mudança de usuário
-  useEffect(() => {
-    const handleUserChange = (event) => {
-      const { previousUser, newUser, action } = event.detail
-      console.log(`🔄 Usuário mudou: ${previousUser?.email || 'Nenhum'} → ${newUser?.email || 'Nenhum'} (${action})`)
-      
-      if (action === 'logout') {
-        console.log('🧹 Limpando dados devido ao logout')
-        clearAllData()
-      } else if (action === 'login') {
-        console.log('👤 Novo usuário logado, carregando dados')
-        refreshAllData()
-      }
-    }
-
-    const handleUserLogout = (event) => {
-      console.log('🚪 Logout detectado, limpando dados imediatamente')
-      clearAllData()
-    }
-
-    // Escutar eventos customizados
-    window.addEventListener('userChanged', handleUserChange)
-    window.addEventListener('userLogout', handleUserLogout)
-
-    return () => {
-      window.removeEventListener('userChanged', handleUserChange)
-      window.removeEventListener('userLogout', handleUserLogout)
-    }
-  }, [])
-
-  // Limpar dados quando usuário mudar
+  // Limpar dados quando usuário mudar (auto-loading desabilitado)
   useEffect(() => {
     if (user) {
       console.log('👤 Usuário logado:', user.email)
@@ -386,6 +387,27 @@ export const DataProvider = ({ children }) => {
       clearAllData()
     }
   }, [user?.id]) // Usar apenas user.id para evitar loops
+
+  // Escutar eventos de mudança de usuário
+  useEffect(() => {
+    const handleUserChange = () => {
+      console.log('🔄 Usuário mudou, limpando dados...')
+      clearAllData()
+    }
+
+    const handleUserLogout = () => {
+      console.log('🚪 Usuário fez logout, limpando dados...')
+      clearAllData()
+    }
+
+    window.addEventListener('userChanged', handleUserChange)
+    window.addEventListener('userLogout', handleUserLogout)
+
+    return () => {
+      window.removeEventListener('userChanged', handleUserChange)
+      window.removeEventListener('userLogout', handleUserLogout)
+    }
+  }, [])
 
   const value = {
     // Estados

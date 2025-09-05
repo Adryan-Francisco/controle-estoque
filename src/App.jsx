@@ -9,7 +9,7 @@ import ProductsPage from './components/ProductsPage'
 import SalesControl from './components/SalesControl'
 import SalesReports from './components/SalesReports'
 import DataIsolationNotification from './components/DataIsolationNotification'
-import QuickDebug from './components/QuickDebug'
+// import QuickDebug from './components/QuickDebug'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -64,7 +64,7 @@ function App() {
               />
             )}
             <DataIsolationNotification />
-            <QuickDebug />
+            {/* <QuickDebug /> */}
           </div>
           </ProtectedRoute>
         </NotificationProvider>
