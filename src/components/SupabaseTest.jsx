@@ -217,12 +217,13 @@ const SupabaseTest = () => {
           if (!bolosSelectError) {
             addTestResult('🔍 Testando INSERT na tabela bolos...', 'info')
             
-            // Testar com dados mínimos primeiro
+            // Testar com dados mínimos primeiro (incluindo user_id)
             const testBoloMinimal = {
               nome: 'Bolo Teste',
               descricao: 'Teste de inserção',
               preco_por_kg: 25.00,
-              categoria: 'Tradicional'
+              categoria: 'Tradicional',
+              user_id: currentUser.id
             }
 
             const { data: boloInsert, error: boloInsertError } = await supabase

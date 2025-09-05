@@ -497,7 +497,7 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-      // Adicionar bolo - VERIFICAR TABELA PRIMEIRO
+      // Adicionar bolo - APENAS COM AUTENTICAÇÃO
     const addBolo = async (boloData) => {
       if (!user) return { error: 'Usuário não autenticado' }
 
@@ -505,7 +505,31 @@ export const DataProvider = ({ children }) => {
         console.log('📝 Adicionando bolo:', boloData)
         console.log('👤 Usuário atual:', user.id)
         
-        // Primeiro, verificar se a tabela bolos existe
+        // Verificar se o usuário está autenticado no Supabase
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+        
+        if (authError || !authUser) {
+          console.log('❌ Usuário não autenticado no Supabase, salvando localmente')
+          
+          const newBolo = {
+            id: Date.now(),
+            ...boloData,
+            user_id: user.id,
+            created_at: new Date().toISOString()
+          }
+          
+          console.log('✅ Bolo salvo localmente (usuário não autenticado):', newBolo.nome)
+          
+          if (window.showNotification) {
+            window.showNotification('✅ Bolo cadastrado localmente!', 'success')
+          }
+          
+          return { data: newBolo, error: null }
+        }
+
+        console.log('✅ Usuário autenticado no Supabase:', authUser.email)
+        
+        // Verificar se a tabela bolos existe
         console.log('🔍 Verificando se a tabela bolos existe...')
         const { data: testData, error: testError } = await supabase
           .from('bolos')
@@ -536,12 +560,13 @@ export const DataProvider = ({ children }) => {
 
         console.log('✅ Tabela bolos existe, tentando inserir...')
         
-        // Preparar dados para inserção (sem campos que podem não existir)
+        // Preparar dados para inserção com user_id
         const boloDataToInsert = {
           nome: boloData.nome,
           descricao: boloData.descricao || '',
           preco_por_kg: Number(boloData.preco_por_kg || 0),
-          categoria: boloData.categoria || 'Tradicional'
+          categoria: boloData.categoria || 'Tradicional',
+          user_id: authUser.id // Usar o ID do usuário autenticado
         }
         
         console.log('🔍 Dados do bolo para inserção:', boloDataToInsert)
