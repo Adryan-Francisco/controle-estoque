@@ -7,6 +7,7 @@ import Header from './components/Header'
 import Dashboard from './components/Dashboard'
 import ProductsPage from './components/ProductsPage'
 import SalesControl from './components/SalesControl'
+import SalesHistory from './components/SalesHistory'
 import SalesReports from './components/SalesReports'
 import DataIsolationNotification from './components/DataIsolationNotification'
 
@@ -27,6 +28,14 @@ function App() {
 
   const navigateToReports = () => {
     setCurrentPage('reports')
+  }
+
+  const navigateToSalesHistory = () => {
+    setCurrentPage('sales-history')
+  }
+
+  const navigateBackToSales = () => {
+    setCurrentPage('sales')
   }
 
   return (
@@ -53,7 +62,9 @@ function App() {
               ) : currentPage === 'products' ? (
                 <ProductsPage onBack={navigateToDashboard} />
               ) : currentPage === 'sales' ? (
-                <SalesControl onBack={navigateToDashboard} />
+                <SalesControl onBack={navigateToDashboard} onShowHistory={navigateToSalesHistory} />
+              ) : currentPage === 'sales-history' ? (
+                <SalesHistory onBack={navigateBackToSales} />
               ) : currentPage === 'reports' ? (
                 <SalesReports onBack={navigateToDashboard} />
               ) : (
