@@ -8,9 +8,9 @@ import {
   Trash2, 
   DollarSign,
   CheckCircle,
-  User,
-  Phone,
-  Mail,
+  User, 
+  Phone, 
+  Mail, 
   CreditCard,
   Cake,
   Scale,
@@ -77,8 +77,8 @@ const SalesControl = () => {
     
     if (!boloForm.nome.trim()) {
       alert('Nome do bolo é obrigatório.')
-      return
-    }
+        return
+      }
 
     if (!boloForm.preco_por_kg || boloForm.preco_por_kg <= 0) {
       alert('Preço por kg deve ser maior que zero.')
@@ -98,7 +98,7 @@ const SalesControl = () => {
       const updatedBolos = bolos.map(b => b.id === editingBolo.id ? newBolo : b)
       saveBolos(updatedBolos)
       setEditingBolo(null)
-    } else {
+        } else {
       // Adicionar novo bolo
       saveBolos([...bolos, newBolo])
     }
@@ -138,13 +138,13 @@ const SalesControl = () => {
     const existingItem = cart.find(item => item.id === bolo.id)
     
     if (existingItem) {
-      setCart(cart.map(item => 
+      setCart(cart.map(item =>
         item.id === bolo.id 
           ? { ...item, peso: item.peso + 0.5 }
           : item
       ))
     } else {
-      setCart([...cart, { 
+      setCart([...cart, {
         ...bolo, 
         peso: 0.5,
         preco_total: bolo.preco_por_kg * 0.5
@@ -162,15 +162,15 @@ const SalesControl = () => {
     if (peso <= 0) {
       removeFromCart(boloId)
     } else {
-      setCart(cart.map(item => 
+      setCart(cart.map(item =>
         item.id === boloId 
-          ? { 
-              ...item, 
+        ? { 
+            ...item, 
               peso,
               preco_total: item.preco_por_kg * peso
-            }
-          : item
-      ))
+          }
+        : item
+    ))
     }
   }
 
@@ -195,7 +195,7 @@ const SalesControl = () => {
       const saleDataToSave = {
         ...saleData,
         user_id: user.id,
-        valor_total: getCartTotal(),
+            valor_total: getCartTotal(),
         itens: cart.map(item => ({
           produto_id: item.id,
           nome: item.nome,
@@ -242,7 +242,7 @@ const SalesControl = () => {
       <div style={{
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
+          alignItems: 'center',
         height: '50vh',
         fontSize: '1.2rem',
         color: '#666'
@@ -254,66 +254,66 @@ const SalesControl = () => {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
+        {/* Header */}
+          <div style={{
+            display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center',
+            alignItems: 'center',
         marginBottom: '2rem',
         paddingBottom: '1rem',
         borderBottom: '2px solid #e2e8f0'
       }}>
         <div>
-          <h1 style={{
+            <h1 style={{
             fontSize: '2rem',
             fontWeight: '700',
             color: '#1e293b',
-            margin: 0,
+              margin: 0,
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem'
-          }}>
+            }}>
             <Cake size={32} />
             Vendas de Bolos
-          </h1>
+            </h1>
           <p style={{ color: '#64748b', margin: '0.5rem 0 0 0' }}>
             Cadastre bolos e realize vendas por peso
           </p>
         </div>
-        
-        <button
+
+          <button
           onClick={() => setShowBoloForm(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
             padding: '0.75rem 1.5rem',
             background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-            color: 'white',
-            border: 'none',
+              color: 'white',
+              border: 'none',
             borderRadius: '8px',
             fontSize: '0.9rem',
             fontWeight: '500',
-            cursor: 'pointer',
+              cursor: 'pointer',
             transition: 'all 0.2s'
           }}
         >
           <Plus size={16} />
           Cadastrar Bolo
-        </button>
-      </div>
+          </button>
+        </div>
 
       {/* Estatísticas */}
-      <div style={{
+        <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '1rem',
         marginBottom: '2rem'
-      }}>
-        <div style={{
+        }}>
+          <div style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          padding: '1.5rem',
+            padding: '1.5rem',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
@@ -340,9 +340,9 @@ const SalesControl = () => {
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
             Faturamento Total
           </div>
-        </div>
+          </div>
 
-        <div style={{
+              <div style={{
           background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
           color: 'white',
           padding: '1.5rem',
@@ -352,7 +352,7 @@ const SalesControl = () => {
           <Cake size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {bolos.length}
-          </div>
+              </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
             Bolos Cadastrados
           </div>
@@ -381,11 +381,11 @@ const SalesControl = () => {
           Dados da Venda
         </h2>
         
-        <div style={{
-          display: 'grid',
+              <div style={{
+                display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1rem'
-        }}>
+                gap: '1rem'
+              }}>
           <div>
             <label style={{
               display: 'block',
@@ -401,7 +401,7 @@ const SalesControl = () => {
               value={saleData.cliente_nome}
               onChange={(e) => setSaleData({...saleData, cliente_nome: e.target.value})}
               placeholder="Nome completo do cliente"
-              style={{
+                    style={{
                 width: '100%',
                 padding: '0.75rem',
                 border: '1px solid #d1d5db',
@@ -528,7 +528,7 @@ const SalesControl = () => {
       </div>
 
       {/* Carrinho de Compras */}
-      <div style={{
+                    <div style={{
         background: 'white',
         borderRadius: '12px',
         padding: '1.5rem',
@@ -538,7 +538,7 @@ const SalesControl = () => {
       }}>
         <h2 style={{
           fontSize: '1.5rem',
-          fontWeight: '600',
+                          fontWeight: '600',
           color: '#1e293b',
           margin: '0 0 1rem 0',
           display: 'flex',
@@ -550,7 +550,7 @@ const SalesControl = () => {
         </h2>
 
         {cart.length === 0 ? (
-          <div style={{
+                        <div style={{
             textAlign: 'center',
             padding: '2rem',
             color: '#64748b'
@@ -562,7 +562,7 @@ const SalesControl = () => {
           <div>
             {cart.map(item => (
               <div key={item.id} style={{
-                display: 'flex',
+                          display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '1rem',
@@ -578,18 +578,18 @@ const SalesControl = () => {
                   <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
                     {formatCurrency(item.preco_por_kg)} por kg
                   </p>
-                </div>
+                        </div>
                 
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '1rem'
                 }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
                     <button
                       onClick={() => updateCartWeight(item.id, item.peso - 0.5)}
                       style={{
@@ -610,11 +610,11 @@ const SalesControl = () => {
                     <div style={{
                       minWidth: '80px',
                       textAlign: 'center',
-                      fontWeight: '600',
+                          fontWeight: '600',
                       color: '#1e293b'
-                    }}>
+                        }}>
                       {item.peso} kg
-                    </div>
+                      </div>
                     
                     <button
                       onClick={() => updateCartWeight(item.id, item.peso + 0.5)}
@@ -632,16 +632,16 @@ const SalesControl = () => {
                     >
                       <Plus size={16} />
                     </button>
-                  </div>
-                  
-                  <div style={{
+                    </div>
+
+                    <div style={{
                     minWidth: '100px',
                     textAlign: 'right',
-                    fontWeight: '600',
+                          fontWeight: '600',
                     color: '#1e293b'
-                  }}>
+                        }}>
                     {formatCurrency(item.preco_total)}
-                  </div>
+                      </div>
                   
                   <button
                     onClick={() => removeFromCart(item.id)}
@@ -659,8 +659,8 @@ const SalesControl = () => {
                   >
                     <Trash2 size={16} />
                   </button>
-                </div>
-              </div>
+                      </div>
+                      </div>
             ))}
             
             <div style={{
@@ -681,7 +681,7 @@ const SalesControl = () => {
                   padding: '0.75rem 1.5rem',
                   cursor: 'pointer',
                   fontSize: '0.9rem',
-                  fontWeight: '500'
+                            fontWeight: '500'
                 }}
               >
                 Limpar Carrinho
@@ -695,12 +695,12 @@ const SalesControl = () => {
                 Total: {formatCurrency(getCartTotal())}
               </div>
             </div>
-          </div>
-        )}
-      </div>
+                        </div>
+                      )}
+                    </div>
 
       {/* Cardápio de Bolos */}
-      <div style={{
+                        <div style={{
         background: 'white',
         borderRadius: '12px',
         padding: '1.5rem',
@@ -713,10 +713,10 @@ const SalesControl = () => {
           fontWeight: '600',
           color: '#1e293b',
           margin: '0 0 1rem 0',
-          display: 'flex',
+                          display: 'flex',
           alignItems: 'center',
-          gap: '0.5rem'
-        }}>
+                          gap: '0.5rem'
+                        }}>
           <Cake size={24} />
           Cardápio de Bolos
         </h2>
@@ -762,7 +762,7 @@ const SalesControl = () => {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       onClick={() => handleEditBolo(bolo)}
-                      style={{
+                              style={{
                         background: '#10b981',
                         color: 'white',
                         border: 'none',
@@ -795,8 +795,8 @@ const SalesControl = () => {
                     >
                       <Trash2 size={14} />
                     </button>
-                  </div>
-                </div>
+                        </div>
+                      </div>
                 
                 <p style={{
                   margin: '0 0 0.5rem 0',
@@ -806,8 +806,8 @@ const SalesControl = () => {
                   {bolo.descricao}
                 </p>
                 
-                <div style={{
-                  display: 'flex',
+                    <div style={{
+                      display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   marginBottom: '1rem'
@@ -831,9 +831,9 @@ const SalesControl = () => {
                   </div>
                 </div>
                 
-                <button
+                      <button
                   onClick={() => addToCart(bolo)}
-                  style={{
+                        style={{
                     width: '100%',
                     background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                     color: 'white',
@@ -843,16 +843,16 @@ const SalesControl = () => {
                     fontSize: '0.9rem',
                     fontWeight: '500',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
+                          display: 'flex',
+                          alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '0.5rem',
+                          gap: '0.5rem',
                     transition: 'all 0.2s'
                   }}
                 >
                   <Plus size={16} />
                   Adicionar ao Carrinho
-                </button>
+                      </button>
               </div>
             ))}
           </div>
@@ -866,10 +866,10 @@ const SalesControl = () => {
         gap: '1rem',
         marginBottom: '2rem'
       }}>
-        <button
+                      <button
           onClick={handleFinalizeSale}
           disabled={cart.length === 0}
-          style={{
+                        style={{
             background: cart.length === 0 ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
             color: 'white',
             border: 'none',
@@ -878,17 +878,17 @@ const SalesControl = () => {
             fontSize: '1.1rem',
             fontWeight: '600',
             cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
             transition: 'all 0.2s',
             opacity: cart.length === 0 ? 0.6 : 1
           }}
         >
           <CheckCircle size={20} />
           Finalizar Venda
-        </button>
-      </div>
+                      </button>
+                    </div>
 
       {/* Histórico de Vendas */}
       <div style={{
@@ -926,7 +926,8 @@ const SalesControl = () => {
                 border: '1px solid #e2e8f0',
                 borderRadius: '8px',
                 padding: '1rem',
-                background: '#f8fafc'
+                background: '#f8fafc',
+                transition: 'all 0.2s'
               }}>
                 <div style={{
                   display: 'flex',
@@ -934,11 +935,12 @@ const SalesControl = () => {
                   alignItems: 'flex-start',
                   marginBottom: '0.5rem'
                 }}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <h3 style={{
                       margin: 0,
                       fontSize: '1.1rem',
-                      color: '#1e293b'
+                      color: '#1e293b',
+                      fontWeight: '600'
                     }}>
                       {sale.cliente_nome || 'Cliente não informado'}
                     </h3>
@@ -947,43 +949,112 @@ const SalesControl = () => {
                       color: '#64748b',
                       fontSize: '0.9rem'
                     }}>
-                      {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                      {new Date(sale.created_at).toLocaleDateString('pt-BR')} às {new Date(sale.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
+                    {sale.cliente_email && (
+                      <p style={{
+                        margin: '0.25rem 0 0 0',
+                        color: '#64748b',
+                        fontSize: '0.8rem'
+                      }}>
+                        📧 {sale.cliente_email}
+                      </p>
+                    )}
+                    {sale.cliente_telefone && (
+                      <p style={{
+                        margin: '0.25rem 0 0 0',
+                        color: '#64748b',
+                        fontSize: '0.8rem'
+                      }}>
+                        📞 {sale.cliente_telefone}
+                      </p>
+                    )}
                   </div>
                   
                   <div style={{
-                    textAlign: 'right'
+                    textAlign: 'right',
+                    minWidth: '120px'
                   }}>
                     <div style={{
-                      fontSize: '1.2rem',
-                      fontWeight: '600',
-                      color: '#059669'
+                      fontSize: '1.3rem',
+                      fontWeight: '700',
+                      color: '#059669',
+                      marginBottom: '0.25rem'
                     }}>
                       {formatCurrency(sale.valor_total || 0)}
                     </div>
                     <div style={{
                       fontSize: '0.9rem',
                       color: '#64748b',
-                      textTransform: 'capitalize'
+                      textTransform: 'capitalize',
+                      background: '#e0f2fe',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '4px',
+                      display: 'inline-block'
                     }}>
-                      {sale.metodo_pagamento}
+                      {sale.metodo_pagamento === 'vista' ? 'À Vista' : 
+                       sale.metodo_pagamento === 'pix' ? 'PIX' :
+                       sale.metodo_pagamento === 'credito' ? 'Cartão Crédito' :
+                       sale.metodo_pagamento === 'debito' ? 'Cartão Débito' :
+                       sale.metodo_pagamento === 'parcelado' ? 'Parcelado' :
+                       sale.metodo_pagamento}
                     </div>
                   </div>
                 </div>
                 
-                {sale.observacoes && (
-                  <p style={{
-                    margin: '0.5rem 0 0 0',
-                    color: '#64748b',
-                    fontSize: '0.9rem',
-                    fontStyle: 'italic'
+                {/* Itens da venda */}
+                {sale.itens && sale.itens.length > 0 && (
+                  <div style={{
+                    marginTop: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e2e8f0'
                   }}>
-                    {sale.observacoes}
-                  </p>
-                )}
+                    <h4 style={{
+                      margin: '0 0 0.5rem 0',
+                      fontSize: '0.9rem',
+                      color: '#374151',
+                      fontWeight: '600'
+                    }}>
+                      Itens vendidos:
+                    </h4>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {sale.itens.map((item, index) => (
+                        <div key={index} style={{
+                          background: '#e0f2fe',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.8rem',
+                          color: '#1e293b'
+                        }}>
+                          {item.nome} - {item.peso}kg ({formatCurrency(item.preco_total)})
+                  </div>
+                ))}
+                    </div>
               </div>
-            ))}
+            )}
+                
+                {sale.observacoes && (
+                  <div style={{
+                    marginTop: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e2e8f0'
+                  }}>
+                    <p style={{
+                      margin: 0,
+                      color: '#64748b',
+                      fontSize: '0.9rem',
+                      fontStyle: 'italic',
+                      background: '#f1f5f9',
+                      padding: '0.5rem',
+                      borderRadius: '4px'
+                    }}>
+                      💬 {sale.observacoes}
+                    </p>
           </div>
+                )}
+        </div>
+            ))}
+      </div>
         )}
       </div>
 
@@ -1047,8 +1118,8 @@ const SalesControl = () => {
                   fontSize: '1.2rem',
                   width: '32px',
                   height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
+              display: 'flex',
+              alignItems: 'center',
                   justifyContent: 'center'
                 }}
               >
@@ -1074,7 +1145,7 @@ const SalesControl = () => {
                   placeholder="Ex: Bolo de Chocolate"
                   style={{
                     width: '100%',
-                    padding: '0.75rem',
+                padding: '0.75rem',
                     border: '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '1rem',
@@ -1166,14 +1237,14 @@ const SalesControl = () => {
                     </option>
                   ))}
                 </select>
-              </div>
-              
-              <div style={{
-                display: 'flex',
+            </div>
+            
+            <div style={{
+              display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '1rem'
-              }}>
-                <button
+            }}>
+              <button
                   type="button"
                   onClick={() => {
                     setShowBoloForm(false)
@@ -1185,31 +1256,31 @@ const SalesControl = () => {
                       categoria: 'Tradicional'
                     })
                   }}
-                  style={{
+                style={{
                     background: '#64748b',
                     color: 'white',
-                    border: 'none',
+                  border: 'none',
                     borderRadius: '8px',
                     padding: '0.75rem 1.5rem',
                     fontSize: '0.9rem',
-                    fontWeight: '500',
+                  fontWeight: '500',
                     cursor: 'pointer'
-                  }}
-                >
-                  Cancelar
-                </button>
-                
-                <button
+                }}
+              >
+                Cancelar
+              </button>
+              
+              <button
                   type="submit"
-                  style={{
+                style={{
                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: 'white',
-                    border: 'none',
+                  color: 'white',
+                  border: 'none',
                     borderRadius: '8px',
                     padding: '0.75rem 1.5rem',
                     fontSize: '0.9rem',
-                    fontWeight: '500',
-                    cursor: 'pointer',
+                  fontWeight: '500',
+                  cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem'
@@ -1217,8 +1288,8 @@ const SalesControl = () => {
                 >
                   <Save size={16} />
                   {editingBolo ? 'Atualizar' : 'Cadastrar'}
-                </button>
-              </div>
+              </button>
+            </div>
             </form>
           </div>
         </div>

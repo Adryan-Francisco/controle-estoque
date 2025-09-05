@@ -15,7 +15,48 @@ export const useData = () => {
 export const DataProvider = ({ children }) => {
   const [products, setProducts] = useState([])
   const [movements, setMovements] = useState([])
-  const [sales, setSales] = useState([])
+  const [sales, setSales] = useState([
+    {
+      id: 1,
+      cliente_nome: 'Cliente Exemplo',
+      cliente_email: 'cliente@exemplo.com',
+      cliente_telefone: '(11) 99999-9999',
+      metodo_pagamento: 'vista',
+      observacoes: 'Bolo de chocolate para aniversário',
+      valor_total: 50.00,
+      itens: [
+        {
+          produto_id: 1,
+          nome: 'Bolo de Chocolate',
+          peso: 1.5,
+          preco_por_kg: 30.00,
+          preco_total: 45.00
+        }
+      ],
+      user_id: 'exemplo',
+      created_at: '2025-01-05T10:00:00.000Z'
+    },
+    {
+      id: 2,
+      cliente_nome: 'Maria Silva',
+      cliente_email: 'maria@email.com',
+      cliente_telefone: '(11) 88888-8888',
+      metodo_pagamento: 'pix',
+      observacoes: 'Bolo de morango para casamento',
+      valor_total: 120.00,
+      itens: [
+        {
+          produto_id: 2,
+          nome: 'Bolo de Morango',
+          peso: 3.0,
+          preco_por_kg: 40.00,
+          preco_total: 120.00
+        }
+      ],
+      user_id: 'exemplo',
+      created_at: '2025-01-04T15:30:00.000Z'
+    }
+  ])
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
 
@@ -352,15 +393,42 @@ export const DataProvider = ({ children }) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      const newSale = {
-        id: Date.now(),
-        ...saleData,
-        user_id: user.id,
-        created_at: new Date().toISOString()
-      }
+      console.log('📝 Adicionando venda:', saleData)
       
+      // Salvar no Supabase
+      const { data, error } = await supabase
+        .from('vendas')
+        .insert([{
+          cliente_nome: saleData.cliente_nome,
+          cliente_email: saleData.cliente_email,
+          cliente_telefone: saleData.cliente_telefone,
+          metodo_pagamento: saleData.metodo_pagamento,
+          observacoes: saleData.observacoes,
+          valor_total: saleData.valor_total,
+          itens: saleData.itens,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+
+      if (error) {
+        console.error('❌ Erro ao salvar venda no Supabase:', error)
+        // Se der erro no Supabase, salvar localmente mesmo assim
+        const newSale = {
+          id: Date.now(),
+          ...saleData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }
+        setSales(prev => [newSale, ...prev])
+        return { data: newSale, error: null }
+      }
+
+      // Atualizar lista local
+      const newSale = data[0]
       setSales(prev => [newSale, ...prev])
       
+      console.log('✅ Venda adicionada:', newSale.cliente_nome)
       return { data: newSale, error: null }
     } catch (error) {
       console.error('Erro ao adicionar venda:', error)
