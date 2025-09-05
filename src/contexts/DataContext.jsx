@@ -783,6 +783,190 @@ export const DataProvider = ({ children }) => {
     }
   }
 
+  // Atualizar venda
+  const updateSale = async (saleId, saleData) => {
+    if (!user) return { error: 'Usuário não autenticado' }
+
+    try {
+      console.log('📝 Atualizando venda:', saleId, saleData)
+      
+      // Verificar se o usuário está autenticado no Supabase
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !authUser) {
+        console.log('❌ Usuário não autenticado no Supabase, atualizando localmente')
+        
+        // Atualizar localmente
+        const updatedSales = sales.map(sale => 
+          sale.id === saleId 
+            ? { ...sale, ...saleData, updated_at: new Date().toISOString() }
+            : sale
+        )
+        
+        setSales(updatedSales)
+        
+        // Salvar no localStorage
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+        
+        if (window.showNotification) {
+          window.showNotification('✅ Venda atualizada localmente!', 'success')
+        }
+        
+        return { data: { id: saleId, ...saleData }, error: null }
+      }
+
+      const saleToUpdate = {
+        cliente_nome: saleData.cliente_nome,
+        cliente_email: saleData.cliente_email || '',
+        cliente_telefone: saleData.cliente_telefone || '',
+        metodo_pagamento: saleData.metodo_pagamento,
+        valor_total: Number(saleData.valor_total || 0),
+        observacoes: saleData.observacoes || ''
+      }
+
+      // Tentar atualizar no Supabase primeiro
+      try {
+        const { data, error } = await supabase
+          .from('vendas')
+          .update(saleToUpdate)
+          .eq('id', saleId)
+          .eq('user_id', authUser.id)
+          .select()
+
+        if (error) {
+          console.error('❌ Erro ao atualizar venda no Supabase:', error)
+          throw error
+        }
+
+        console.log('✅ Venda atualizada no Supabase:', data[0].id)
+        
+        // Atualizar estado local
+        const updatedSales = sales.map(sale => 
+          sale.id === saleId 
+            ? { ...sale, ...saleToUpdate, updated_at: new Date().toISOString() }
+            : sale
+        )
+        
+        setSales(updatedSales)
+        
+        // Atualizar cache
+        const cacheKey = `sales_${user.id}`
+        setCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: updatedSales,
+            timestamp: Date.now()
+          }
+        }))
+
+        // Salvar no localStorage
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Venda atualizada com sucesso!', 'success')
+        }
+
+        return { data: data[0], error: null }
+      } catch (supabaseError) {
+        console.log('⚠️ Erro no Supabase, atualizando localmente')
+        
+        // Atualizar localmente
+        const updatedSales = sales.map(sale => 
+          sale.id === saleId 
+            ? { ...sale, ...saleToUpdate, updated_at: new Date().toISOString() }
+            : sale
+        )
+        
+        setSales(updatedSales)
+        
+        // Salvar no localStorage
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Venda atualizada localmente!', 'success')
+        }
+
+        return { data: { id: saleId, ...saleToUpdate }, error: null }
+      }
+    } catch (error) {
+      console.error('❌ Erro crítico ao atualizar venda:', error)
+      return { error: error.message }
+    }
+  }
+
+  // Deletar venda
+  const deleteSale = async (saleId) => {
+    if (!user) return { error: 'Usuário não autenticado' }
+
+    try {
+      console.log('🗑️ Deletando venda:', saleId)
+      
+      // Verificar se o usuário está autenticado no Supabase
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !authUser) {
+        console.log('❌ Usuário não autenticado no Supabase, deletando localmente')
+        
+        // Deletar localmente
+        const updatedSales = sales.filter(sale => sale.id !== saleId)
+        setSales(updatedSales)
+        
+        // Salvar no localStorage
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+        
+        if (window.showNotification) {
+          window.showNotification('✅ Venda deletada localmente!', 'success')
+        }
+        
+        return { error: null }
+      }
+
+      // Tentar deletar do Supabase primeiro
+      try {
+        const { error } = await supabase
+          .from('vendas')
+          .delete()
+          .eq('id', saleId)
+          .eq('user_id', authUser.id)
+
+        if (error) {
+          console.error('❌ Erro ao deletar venda do Supabase:', error)
+          throw error
+        }
+
+        console.log('✅ Venda deletada do Supabase:', saleId)
+      } catch (supabaseError) {
+        console.log('⚠️ Erro no Supabase, deletando localmente')
+      }
+
+      // Atualizar estado local
+      const updatedSales = sales.filter(sale => sale.id !== saleId)
+      setSales(updatedSales)
+      
+      // Atualizar cache
+      const cacheKey = `sales_${user.id}`
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: updatedSales,
+          timestamp: Date.now()
+        }
+      }))
+
+      // Atualizar localStorage
+      localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+
+      if (window.showNotification) {
+        window.showNotification('✅ Venda deletada com sucesso!', 'success')
+      }
+
+      return { error: null }
+    } catch (error) {
+      console.error('❌ Erro ao deletar venda:', error)
+      return { error: error.message }
+    }
+  }
+
   // Sincronizar dados locais com Supabase
   const syncLocalData = async () => {
     if (!user) return
@@ -838,7 +1022,9 @@ export const DataProvider = ({ children }) => {
     addMovement,
     addSale,
     addBolo,
+    updateSale,
     deleteProduct,
+    deleteSale,
     refreshAllData,
     syncLocalData,
     clearAllData

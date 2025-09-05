@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowLeft, Calendar, DollarSign, CreditCard, User, Phone, Mail } from 'lucide-react'
+import { ArrowLeft, Calendar, DollarSign, CreditCard, User, Phone, Mail, Edit, Trash2, Save, X } from 'lucide-react'
 
 const SalesHistory = ({ onBack }) => {
-  const { sales, isLoading, refreshAllData } = useData()
+  const { sales, isLoading, refreshAllData, updateSale, deleteSale } = useData()
   const { user } = useAuth()
   const [filteredSales, setFilteredSales] = useState([])
   const [filter, setFilter] = useState('all') // all, today, week, month
+  const [editingSale, setEditingSale] = useState(null)
+  const [editForm, setEditForm] = useState({
+    cliente_nome: '',
+    cliente_email: '',
+    cliente_telefone: '',
+    metodo_pagamento: 'vista',
+    observacoes: ''
+  })
 
   useEffect(() => {
     if (sales && sales.length > 0) {
@@ -90,6 +98,71 @@ const SalesHistory = ({ onBack }) => {
   }
 
   const totalValue = filteredSales.reduce((sum, sale) => sum + (sale.valor_total || 0), 0)
+
+  const handleEditSale = (sale) => {
+    setEditingSale(sale.id)
+    setEditForm({
+      cliente_nome: sale.cliente_nome || '',
+      cliente_email: sale.cliente_email || '',
+      cliente_telefone: sale.cliente_telefone || '',
+      metodo_pagamento: sale.metodo_pagamento || 'vista',
+      observacoes: sale.observacoes || ''
+    })
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingSale) return
+
+    try {
+      const { error } = await updateSale(editingSale, editForm)
+      if (error) {
+        console.error('Erro ao atualizar venda:', error)
+        alert('Erro ao atualizar venda. Tente novamente.')
+        return
+      }
+
+      setEditingSale(null)
+      setEditForm({
+        cliente_nome: '',
+        cliente_email: '',
+        cliente_telefone: '',
+        metodo_pagamento: 'vista',
+        observacoes: ''
+      })
+    } catch (error) {
+      console.error('Erro ao salvar venda:', error)
+      alert('Erro ao salvar venda. Tente novamente.')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingSale(null)
+    setEditForm({
+      cliente_nome: '',
+      cliente_email: '',
+      cliente_telefone: '',
+      metodo_pagamento: 'vista',
+      observacoes: ''
+    })
+  }
+
+  const handleDeleteSale = async (saleId) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.')) {
+      return
+    }
+
+    try {
+      const { error } = await deleteSale(saleId)
+      if (error) {
+        console.error('Erro ao deletar venda:', error)
+        alert('Erro ao deletar venda. Tente novamente.')
+        return
+      }
+    } catch (error) {
+      console.error('Erro ao deletar venda:', error)
+      alert('Erro ao deletar venda. Tente novamente.')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -337,26 +410,46 @@ const SalesHistory = ({ onBack }) => {
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     {/* Informações do Cliente */}
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div style={{
-                          background: '#3b82f6',
-                          borderRadius: '8px',
-                          padding: '6px',
-                          color: 'white'
-                        }}>
-                          <User size={16} />
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div style={{
+                            background: '#3b82f6',
+                            borderRadius: '8px',
+                            padding: '6px',
+                            color: 'white'
+                          }}>
+                            <User size={16} />
+                          </div>
+                          <h3 className="font-semibold text-gray-900">{sale.cliente_nome}</h3>
+                          <span style={{
+                            background: '#e5e7eb',
+                            color: '#374151',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '500'
+                          }}>
+                            #{index + 1}
+                          </span>
                         </div>
-                        <h3 className="font-semibold text-gray-900">{sale.cliente_nome}</h3>
-                        <span style={{
-                          background: '#e5e7eb',
-                          color: '#374151',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500'
-                        }}>
-                          #{index + 1}
-                        </span>
+                        
+                        {/* Botões de Ação */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditSale(sale)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                          >
+                            <Edit size={12} />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSale(sale.id)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                          >
+                            <Trash2 size={12} />
+                            Excluir
+                          </button>
+                        </div>
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
@@ -463,6 +556,237 @@ const SalesHistory = ({ onBack }) => {
             </div>
           )}
         </div>
+
+        {/* Modal de Edição de Venda */}
+        {editingSale && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '500px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}>
+              <div style={{
+                padding: '1.5rem',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: '600',
+                  color: '#1e293b',
+                  margin: 0
+                }}>
+                  Editar Venda
+                </h2>
+                <button
+                  onClick={handleCancelEdit}
+                  style={{
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.5rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={(e) => { e.preventDefault(); handleSaveEdit(); }} style={{ padding: '1.5rem' }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    fontSize: '0.9rem',
+                    color: '#374151',
+                    marginBottom: '0.5rem',
+                    display: 'block',
+                    fontWeight: '500'
+                  }}>
+                    Nome do Cliente *
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.cliente_nome}
+                    onChange={(e) => setEditForm({...editForm, cliente_nome: e.target.value})}
+                    placeholder="Nome completo"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    fontSize: '0.9rem',
+                    color: '#374151',
+                    marginBottom: '0.5rem',
+                    display: 'block',
+                    fontWeight: '500'
+                  }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editForm.cliente_email}
+                    onChange={(e) => setEditForm({...editForm, cliente_email: e.target.value})}
+                    placeholder="email@exemplo.com"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    fontSize: '0.9rem',
+                    color: '#374151',
+                    marginBottom: '0.5rem',
+                    display: 'block',
+                    fontWeight: '500'
+                  }}>
+                    Telefone
+                  </label>
+                  <input
+                    type="tel"
+                    value={editForm.cliente_telefone}
+                    onChange={(e) => setEditForm({...editForm, cliente_telefone: e.target.value})}
+                    placeholder="(11) 99999-9999"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    fontSize: '0.9rem',
+                    color: '#374151',
+                    marginBottom: '0.5rem',
+                    display: 'block',
+                    fontWeight: '500'
+                  }}>
+                    Forma de Pagamento
+                  </label>
+                  <select
+                    value={editForm.metodo_pagamento}
+                    onChange={(e) => setEditForm({...editForm, metodo_pagamento: e.target.value})}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    <option value="vista">À Vista</option>
+                    <option value="pix">PIX</option>
+                    <option value="cartao">Cartão</option>
+                    <option value="debito">Débito</option>
+                    <option value="credito">Crédito</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{
+                    fontSize: '0.9rem',
+                    color: '#374151',
+                    marginBottom: '0.5rem',
+                    display: 'block',
+                    fontWeight: '500'
+                  }}>
+                    Observações
+                  </label>
+                  <textarea
+                    value={editForm.observacoes}
+                    onChange={(e) => setEditForm({...editForm, observacoes: e.target.value})}
+                    placeholder="Observações sobre a venda..."
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  gap: '1rem',
+                  justifyContent: 'flex-end'
+                }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    style={{
+                      background: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      padding: '0.75rem 1.5rem',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    style={{
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.75rem 1.5rem',
+                      fontSize: '0.9rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <Save size={16} />
+                    Salvar Alterações
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
