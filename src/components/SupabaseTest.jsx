@@ -90,10 +90,10 @@ const SupabaseTest = () => {
 
       // Teste 5: Verificar autenticação atual
       addTestResult('🔍 Verificando autenticação atual...', 'info')
-      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+      const { data: { user: currentUser }, error: currentAuthError } = await supabase.auth.getUser()
       
-      if (authError) {
-        addTestResult(`❌ Erro de autenticação: ${authError.message}`, 'error')
+      if (currentAuthError) {
+        addTestResult(`❌ Erro de autenticação: ${currentAuthError.message}`, 'error')
       } else if (!currentUser) {
         addTestResult('❌ Nenhum usuário autenticado', 'error')
         addTestResult('💡 Faça login primeiro para testar inserções', 'info')
