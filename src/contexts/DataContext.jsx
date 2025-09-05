@@ -28,7 +28,38 @@ export const DataProvider = ({ children }) => {
   }
 
   // Dados mock para garantir funcionamento (apenas se não houver dados do Supabase)
-  const mockProducts = []
+  const mockProducts = [
+    {
+      id: 'mock-1',
+      nome: 'EMBALAGEM P/ BOLO 8 LISO UNID',
+      descricao: 'Embalagem para bolo de 8 polegadas',
+      valor_unit: 5.99,
+      quantidade: 3.00,
+      valor_total: 17.97,
+      user_id: user?.id || 'mock-user',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'mock-2',
+      nome: 'PRATO ULTRAFEST 4 PRATA',
+      descricao: 'Prato ultrafest prata tamanho 4',
+      valor_unit: 1.55,
+      quantidade: 5.00,
+      valor_total: 7.75,
+      user_id: user?.id || 'mock-user',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'mock-3',
+      nome: 'CHOCOLATE GAROTO BRANCO 1 KL',
+      descricao: 'Chocolate Garoto branco 1kg',
+      valor_unit: 59.99,
+      quantidade: 1.00,
+      valor_total: 59.99,
+      user_id: user?.id || 'mock-user',
+      created_at: new Date().toISOString()
+    }
+  ]
 
   const mockMovements = [
     {
@@ -68,23 +99,53 @@ export const DataProvider = ({ children }) => {
       setLoading(true)
       console.log('🔄 Buscando produtos do Supabase...')
       
-      // Buscar produtos reais do Supabase
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      // Tentar buscar produtos com retry e timeout
+      let retries = 3
+      let data = null
+      let error = null
+
+      while (retries > 0) {
+        try {
+          const result = await Promise.race([
+            supabase
+              .from('produtos')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), 5000)
+            )
+          ])
+          
+          data = result.data
+          error = result.error
+          break
+        } catch (retryError) {
+          retries--
+          console.log(`⚠️ Tentativa ${4-retries} falhou, tentando novamente...`)
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
+        }
+      }
 
       if (error) {
         console.error('❌ Erro ao buscar produtos:', error)
+        console.log('🔄 Usando dados de exemplo...')
         setProducts(mockProducts)
       } else {
         console.log('✅ Produtos carregados do Supabase:', data?.length || 0, 'itens')
-        setProducts(data || [])
+        if (data && data.length > 0) {
+          setProducts(data)
+        } else {
+          console.log('🔄 Nenhum produto encontrado, usando dados de exemplo...')
+          setProducts(mockProducts)
+        }
       }
       
     } catch (error) {
       console.error('❌ Erro crítico:', error)
+      console.log('🔄 Usando dados de exemplo como fallback...')
       setProducts(mockProducts)
     } finally {
       setLoading(false)

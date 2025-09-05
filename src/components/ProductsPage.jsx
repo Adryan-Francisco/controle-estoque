@@ -172,7 +172,7 @@ const ProductsPage = ({ onBack }) => {
             }}
           >
             <RefreshCw size={18} />
-            Atualizar
+            {refreshing ? 'Carregando...' : 'Atualizar'}
           </button>
         </div>
       </div>
