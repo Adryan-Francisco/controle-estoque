@@ -1,12 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-
-
-
-
-
-
-
-
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 
@@ -43,7 +35,6 @@ export const NotificationProvider = ({ children }) => {
         return
       }
 
-
       // Gerar notificações baseadas nos dados reais
       const newNotifications = []
 
@@ -74,59 +65,56 @@ export const NotificationProvider = ({ children }) => {
       })
 
       // Simular notificações de movimentações recentes
-      const { data: movimentacoes, error: movimentacoesError } = await supabase
-        .from('movimentacoes')
-        .select(`
-          *,
-          produtos (nome)
-        `)
-        .eq('usuario_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3)
+      try {
+        const { data: movimentacoes, error: movimentacoesError } = await supabase
+          .from('movimentacoes')
+          .select(`
+            *,
+            produtos (nome)
+          `)
+          .eq('usuario_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(3)
 
-      if (!movimentacoesError && movimentacoes) {
-        movimentacoes.forEach(mov => {
-          newNotifications.push({
-            id: `movimentacao-${mov.id}`,
-            title: 'Movimentação Registrada',
-            message: `${mov.tipo === 'entrada' ? 'Entrada' : 'Saída'} de ${mov.quantidade} unidades de "${mov.produtos?.nome || 'Produto'}" registrada`,
-            time: getTimeAgo(mov.created_at),
-            type: 'success',
-            action: 'Ver movimentação',
-            data: { movimentacaoId: mov.id, tipo: 'movimentacao' }
+        if (!movimentacoesError && movimentacoes) {
+          movimentacoes.forEach(mov => {
+            newNotifications.push({
+              id: `movimentacao-${mov.id}`,
+              title: 'Movimentação Registrada',
+              message: `${mov.tipo === 'entrada' ? 'Entrada' : 'Saída'} de ${mov.quantidade} unidades de "${mov.produtos?.nome || 'Produto'}" registrada`,
+              time: getTimeAgo(mov.created_at),
+              type: 'success',
+              action: 'Ver movimentação',
+              data: { movimentacaoId: mov.id, tipo: 'movimentacao' }
+            })
           })
-        })
+        }
+      } catch (movError) {
+        console.log('Movimentações não disponíveis:', movError)
       }
 
-      // Simular notificações de vendas recentes
-      const { data: vendas, error: vendasError } = await supabase
-        .from('vendas')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(2)
-
-      if (!vendasError && vendas) {
-        vendas.forEach(venda => {
-          newNotifications.push({
-            id: `venda-${venda.id}`,
-            title: 'Venda Realizada',
-            message: `Venda para "${venda.cliente_nome}" no valor de R$ ${venda.valor_final.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            time: getTimeAgo(venda.created_at),
-            type: 'success',
-            action: 'Ver venda',
-            data: { vendaId: venda.id, tipo: 'venda' }
-          })
-        })
-      }
-
-      // Adicionar notificação de relatório disponível (simulada)
-      if (newNotifications.length > 0) {
+      // Adicionar notificações de sistema
+      if (newNotifications.length === 0) {
         newNotifications.push({
-          id: 'relatorio-disponivel',
-          title: 'Relatório Disponível',
-          message: 'Relatório mensal de movimentações gerado automaticamente',
-          time: '2 horas',
+          id: 'sistema-sem-notificacoes',
+          title: 'Sistema Atualizado',
+          message: 'Nenhuma notificação pendente no momento',
+          time: 'Agora',
+          type: 'info',
+          action: 'Ver dashboard',
+          data: { tipo: 'sistema' }
+        })
+      }
+
+      // Adicionar notificação de relatório semanal
+      const today = new Date()
+      const dayOfWeek = today.getDay()
+      if (dayOfWeek === 1) { // Segunda-feira
+        newNotifications.push({
+          id: 'relatorio-semanal',
+          title: 'Relatório Semanal',
+          message: 'Relatório de movimentações da semana passada está disponível',
+          time: 'Agora',
           type: 'info',
           action: 'Baixar relatório',
           data: { tipo: 'relatorio' }
@@ -148,145 +136,96 @@ export const NotificationProvider = ({ children }) => {
     const diffInMinutes = Math.floor((now - date) / (1000 * 60))
     
     if (diffInMinutes < 1) return 'Agora'
-    if (diffInMinutes < 60) return `${diffInMinutes} min`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} horas`
-    return `${Math.floor(diffInMinutes / 1440)} dias`
-  }
-
-  // Executar ação da notificação
-  const executeNotificationAction = async (notification) => {
-    const { data, action } = notification
-
-    try {
-      switch (data.tipo) {
-        case 'produto':
-          // Navegar para página de produtos e destacar o produto
-          window.location.href = '/products'
-          break
-        case 'movimentacao':
-          // Navegar para página de movimentações
-          window.location.href = '/movements'
-          break
-        case 'venda':
-          // Navegar para página de vendas
-          window.location.href = '/sales'
-          break
-        case 'relatorio':
-          // Gerar e baixar relatório
-          await generateReport()
-          break
-        default:
-          console.log(`Ação não implementada: ${action}`)
-      }
-    } catch (error) {
-      console.error('Erro ao executar ação da notificação:', error)
-    }
-  }
-
-  // Gerar relatório
-  const generateReport = async () => {
-    try {
-      // Buscar dados para o relatório
-      const { data: vendas } = await supabase
-        .from('vendas')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      const { data: movimentacoes } = await supabase
-        .from('movimentacoes')
-        .select(`
-          *,
-          produtos (nome)
-        `)
-        .eq('usuario_id', user.id)
-        .order('created_at', { ascending: false })
-
-      // Criar conteúdo do relatório
-      const reportContent = `
-        <html>
-          <head>
-            <title>Relatório do Sistema - ${new Date().toLocaleDateString('pt-BR')}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .header { text-align: center; margin-bottom: 30px; }
-              .section { margin-bottom: 25px; }
-              .metric { display: inline-block; margin: 10px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
-              .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-              .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              .table th { background-color: #f2f2f2; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Relatório do Sistema</h1>
-              <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
-            </div>
-            
-            <div class="section">
-              <h2>Resumo de Vendas</h2>
-              <div class="metric">Total de Vendas: ${vendas?.length || 0}</div>
-              <div class="metric">Faturamento Total: R$ ${vendas?.reduce((sum, v) => sum + (v.valor_final || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</div>
-            </div>
-            
-            <div class="section">
-              <h2>Movimentações Recentes</h2>
-              <table class="table">
-                <tr><th>Data</th><th>Tipo</th><th>Produto</th><th>Quantidade</th><th>Motivo</th></tr>
-                ${movimentacoes?.map(mov => 
-                  `<tr><td>${new Date(mov.created_at).toLocaleDateString('pt-BR')}</td><td>${mov.tipo}</td><td>${mov.produtos?.nome || 'N/A'}</td><td>${mov.quantidade}</td><td>${mov.motivo}</td></tr>`
-                ).join('') || '<tr><td colspan="5">Nenhuma movimentação encontrada</td></tr>'}
-              </table>
-            </div>
-          </body>
-        </html>
-      `
-
-      // Baixar relatório
-      const blob = new Blob([reportContent], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `relatorio-sistema-${new Date().toISOString().split('T')[0]}.html`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Erro ao gerar relatório:', error)
-    }
+    if (diffInMinutes < 60) return `${diffInMinutes}m atrás`
+    
+    const diffInHours = Math.floor(diffInMinutes / 60)
+    if (diffInHours < 24) return `${diffInHours}h atrás`
+    
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) return `${diffInDays}d atrás`
+    
+    return date.toLocaleDateString('pt-BR')
   }
 
   // Marcar notificação como lida
   const markAsRead = (notificationId) => {
     setNotifications(prev => 
-      prev.filter(notif => notif.id !== notificationId)
+      prev.map(notif => 
+        notif.id === notificationId 
+          ? { ...notif, read: true }
+          : notif
+      )
     )
   }
 
   // Marcar todas como lidas
   const markAllAsRead = () => {
-    setNotifications([])
+    setNotifications(prev => 
+      prev.map(notif => ({ ...notif, read: true }))
+    )
   }
 
-  // Atualizar notificações periodicamente
+  // Remover notificação
+  const removeNotification = (notificationId) => {
+    setNotifications(prev => 
+      prev.filter(notif => notif.id !== notificationId)
+    )
+  }
+
+  // Executar ação da notificação
+  const executeAction = (notification) => {
+    markAsRead(notification.id)
+    
+    switch (notification.data?.tipo) {
+      case 'produto':
+        // Navegar para página de produtos
+        console.log('Navegando para produto:', notification.data.produtoId)
+        break
+      case 'movimentacao':
+        // Navegar para página de movimentações
+        console.log('Navegando para movimentação:', notification.data.movimentacaoId)
+        break
+      case 'relatorio':
+        // Baixar relatório
+        console.log('Baixando relatório')
+        break
+      case 'sistema':
+        // Navegar para dashboard
+        console.log('Navegando para dashboard')
+        break
+      default:
+        console.log('Ação não implementada:', notification.action)
+    }
+  }
+
+  // Buscar notificações quando o usuário mudar
   useEffect(() => {
     if (user) {
       fetchNotifications()
-      
-      // Atualizar a cada 30 segundos
-      const interval = setInterval(fetchNotifications, 30000)
-      return () => clearInterval(interval)
+    } else {
+      setNotifications([])
     }
+  }, [user])
+
+  // Atualizar notificações a cada 5 minutos
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(() => {
+      fetchNotifications()
+    }, 5 * 60 * 1000) // 5 minutos
+
+    return () => clearInterval(interval)
   }, [user])
 
   const value = {
     notifications,
     loading,
     fetchNotifications,
-    executeNotificationAction,
     markAsRead,
-    markAllAsRead
+    markAllAsRead,
+    removeNotification,
+    executeAction
   }
 
   return (
@@ -295,3 +234,5 @@ export const NotificationProvider = ({ children }) => {
     </NotificationContext.Provider>
   )
 }
+
+export default NotificationContext
