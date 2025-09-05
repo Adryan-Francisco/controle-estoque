@@ -33,28 +33,28 @@ export const DataProvider = ({ children }) => {
           preco_total: 45.00
         }
       ],
-      user_id: 'exemplo',
-      created_at: '2025-01-05T10:00:00.000Z'
-    },
-    {
-      id: 2,
-      cliente_nome: 'Maria Silva',
-      cliente_email: 'maria@email.com',
-      cliente_telefone: '(11) 88888-8888',
-      metodo_pagamento: 'pix',
-      observacoes: 'Bolo de morango para casamento',
-      valor_total: 120.00,
-      itens: [
-        {
-          produto_id: 2,
-          nome: 'Bolo de Morango',
-          peso: 3.0,
-          preco_por_kg: 40.00,
-          preco_total: 120.00
-        }
-      ],
-      user_id: 'exemplo',
-      created_at: '2025-01-04T15:30:00.000Z'
+              user_id: 'exemplo',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        cliente_nome: 'Maria Silva',
+        cliente_email: 'maria@email.com',
+        cliente_telefone: '(11) 88888-8888',
+        metodo_pagamento: 'pix',
+        observacoes: 'Bolo de morango para casamento',
+        valor_total: 120.00,
+        itens: [
+          {
+            produto_id: 2,
+            nome: 'Bolo de Morango',
+            peso: 3.0,
+            preco_por_kg: 40.00,
+            preco_total: 120.00
+          }
+        ],
+        user_id: 'exemplo',
+        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
     }
   ])
   const [loading, setLoading] = useState(false)
@@ -65,7 +65,49 @@ export const DataProvider = ({ children }) => {
     console.log('🧹 Limpando todos os dados do usuário anterior')
     setProducts([])
     setMovements([])
-    setSales([])
+    // Manter dados de exemplo de vendas sempre visíveis
+    setSales([
+      {
+        id: 1,
+        cliente_nome: 'Cliente Exemplo',
+        cliente_email: 'cliente@exemplo.com',
+        cliente_telefone: '(11) 99999-9999',
+        metodo_pagamento: 'vista',
+        observacoes: 'Bolo de chocolate para aniversário',
+        valor_total: 50.00,
+        itens: [
+          {
+            produto_id: 1,
+            nome: 'Bolo de Chocolate',
+            peso: 1.5,
+            preco_por_kg: 30.00,
+            preco_total: 45.00
+          }
+        ],
+        user_id: 'exemplo',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        cliente_nome: 'Maria Silva',
+        cliente_email: 'maria@email.com',
+        cliente_telefone: '(11) 88888-8888',
+        metodo_pagamento: 'pix',
+        observacoes: 'Bolo de morango para casamento',
+        valor_total: 120.00,
+        itens: [
+          {
+            produto_id: 2,
+            nome: 'Bolo de Morango',
+            peso: 3.0,
+            preco_por_kg: 40.00,
+            preco_total: 120.00
+          }
+        ],
+        user_id: 'exemplo',
+        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ])
   }
 
   // Dados mock para garantir funcionamento
