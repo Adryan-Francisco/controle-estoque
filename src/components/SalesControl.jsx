@@ -126,7 +126,7 @@ const SalesControl = () => {
             descricao: boloInserido.descricao,
             preco_por_kg: boloInserido.preco_por_kg,
             categoria: boloInserido.categoria,
-            disponivel: boloInserido.disponibilidade,
+            disponivel: true, // Sempre disponível por padrão
             created_at: boloInserido.created_at
           }
           saveBolos([...bolos, newBolo])

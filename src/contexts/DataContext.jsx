@@ -477,13 +477,12 @@ export const DataProvider = ({ children }) => {
     try {
       console.log('📝 Adicionando bolo:', boloData)
       
-      const boloDataToInsert = {
-        nome: boloData.nome,
-        descricao: boloData.descricao || '',
-        preco_por_kg: Number(boloData.preco_por_kg || 0),
-        categoria: boloData.categoria || 'Tradicional',
-        disponibilidade: true
-      }
+          const boloDataToInsert = {
+      nome: boloData.nome,
+      descricao: boloData.descricao || '',
+      preco_por_kg: Number(boloData.preco_por_kg || 0),
+      categoria: boloData.categoria || 'Tradicional'
+    }
       
       console.log('🔍 Dados do bolo para inserção:', boloDataToInsert)
       
