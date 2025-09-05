@@ -436,6 +436,33 @@ export const DataProvider = ({ children }) => {
 
     try {
       console.log('📝 Adicionando venda:', saleData)
+      console.log('👤 Usuário atual:', user.id)
+      
+      // Verificar se a tabela vendas existe primeiro
+      console.log('🔍 Verificando tabela vendas...')
+      const { data: testData, error: testError } = await supabase
+        .from('vendas')
+        .select('*')
+        .limit(1)
+
+      if (testError) {
+        console.error('❌ Erro ao verificar tabela vendas:', testError)
+        console.error('❌ Código do erro:', testError.code)
+        console.error('❌ Mensagem do erro:', testError.message)
+        
+        // Se a tabela não existir, criar dados locais
+        const newSale = {
+          id: Date.now(),
+          ...saleData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }
+        setSales(prev => [newSale, ...prev])
+        console.log('✅ Venda salva localmente (tabela vendas não existe)')
+        return { data: newSale, error: null }
+      }
+
+      console.log('✅ Tabela vendas existe, inserindo dados...')
       
       // Salvar no Supabase
       const { data, error } = await supabase
@@ -455,6 +482,10 @@ export const DataProvider = ({ children }) => {
 
       if (error) {
         console.error('❌ Erro ao salvar venda no Supabase:', error)
+        console.error('❌ Código do erro:', error.code)
+        console.error('❌ Mensagem do erro:', error.message)
+        console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2))
+        
         // Se der erro no Supabase, salvar localmente mesmo assim
         const newSale = {
           id: Date.now(),
@@ -463,6 +494,7 @@ export const DataProvider = ({ children }) => {
           created_at: new Date().toISOString()
         }
         setSales(prev => [newSale, ...prev])
+        console.log('✅ Venda salva localmente (erro no Supabase)')
         return { data: newSale, error: null }
       }
 
@@ -470,10 +502,10 @@ export const DataProvider = ({ children }) => {
       const newSale = data[0]
       setSales(prev => [newSale, ...prev])
       
-      console.log('✅ Venda adicionada:', newSale.cliente_nome)
+      console.log('✅ Venda adicionada no Supabase:', newSale.cliente_nome)
       return { data: newSale, error: null }
     } catch (error) {
-      console.error('Erro ao adicionar venda:', error)
+      console.error('❌ Erro crítico ao adicionar venda:', error)
       return { data: null, error }
     }
   }

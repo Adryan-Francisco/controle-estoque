@@ -30,7 +30,7 @@ const SalesReports = ({ onBack }) => {
     if (!sales || sales.length === 0) return []
     
     const now = new Date()
-    const days = parseInt(dateFilter)
+        const days = parseInt(dateFilter)
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
     
     return sales.filter(sale => {
@@ -46,7 +46,7 @@ const SalesReports = ({ onBack }) => {
     const totalVendas = filteredSales.length
     const totalFaturamento = filteredSales.reduce((sum, sale) => sum + (sale.valor_total || 0), 0)
     const ticketMedio = totalVendas > 0 ? totalFaturamento / totalVendas : 0
-    
+
     return {
       totalVendas,
       totalFaturamento,
@@ -86,21 +86,21 @@ const SalesReports = ({ onBack }) => {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        {/* Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
         marginBottom: '2rem',
         paddingBottom: '1rem',
         borderBottom: '2px solid #e2e8f0'
-      }}>
-        <div>
-          <h1 style={{
-            fontSize: '2rem',
+          }}>
+            <div>
+              <h1 style={{
+                fontSize: '2rem',
             fontWeight: '700',
             color: '#1e293b',
-            margin: 0,
+                margin: 0,
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem'
@@ -110,15 +110,15 @@ const SalesReports = ({ onBack }) => {
           </h1>
           <p style={{ color: '#64748b', margin: '0.5rem 0 0 0' }}>
             Análise de vendas e performance
-          </p>
-        </div>
-        
-        <button
+              </p>
+            </div>
+            
+              <button
           onClick={onBack}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
             padding: '0.75rem 1.5rem',
             background: 'rgba(255, 255, 255, 0.9)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -127,29 +127,29 @@ const SalesReports = ({ onBack }) => {
             textDecoration: 'none',
             fontSize: '0.9rem',
             fontWeight: '500',
-            cursor: 'pointer',
+                  cursor: 'pointer',
             transition: 'all 0.2s',
             backdropFilter: 'blur(10px)'
           }}
         >
           <ArrowLeft size={18} />
           Voltar ao Dashboard
-        </button>
-      </div>
+              </button>
+          </div>
 
-      {/* Filtros */}
-      <div style={{
+          {/* Filtros */}
+            <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '1.5rem',
-        marginBottom: '2rem',
+          padding: '1.5rem',
+          marginBottom: '2rem',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         border: '1px solid #e2e8f0'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           marginBottom: '1rem'
         }}>
           <h2 style={{
@@ -157,43 +157,43 @@ const SalesReports = ({ onBack }) => {
             fontWeight: '600',
             color: '#1e293b',
             margin: 0,
-            display: 'flex',
-            alignItems: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
             gap: '0.5rem'
           }}>
             <Filter size={20} />
             Filtros
           </h2>
-          
-          <button
+              
+              <button
             onClick={refreshAllData}
             disabled={refreshing}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
               padding: '0.75rem 1rem',
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
               color: 'white',
-              border: 'none',
+                  border: 'none',
               borderRadius: '8px',
               fontSize: '0.9rem',
               fontWeight: '500',
-              cursor: 'pointer',
+                  cursor: 'pointer',
               transition: 'all 0.2s',
               opacity: refreshing ? 0.6 : 1
             }}
           >
             <RefreshCw size={16} />
             Atualizar
-          </button>
-        </div>
-        
-        <div style={{
-          display: 'flex',
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
           gap: '1rem',
-          alignItems: 'center'
-        }}>
+              alignItems: 'center'
+            }}>
           <div>
             <label style={{
               display: 'block',
@@ -204,98 +204,98 @@ const SalesReports = ({ onBack }) => {
             }}>
               Período
             </label>
-            <select
+              <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              style={{
+                style={{
                 padding: '0.75rem',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '1rem',
                 outline: 'none',
-                background: 'white'
-              }}
-            >
+                  background: 'white'
+                }}
+              >
               <option value="7">Últimos 7 dias</option>
               <option value="30">Últimos 30 dias</option>
               <option value="90">Últimos 90 dias</option>
               <option value="365">Último ano</option>
-            </select>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Estatísticas */}
-      <div style={{
-        display: 'grid',
+        {/* Estatísticas */}
+        <div style={{
+          display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
         gap: '1rem',
-        marginBottom: '2rem'
-      }}>
-        <div style={{
+          marginBottom: '2rem'
+        }}>
+          <div style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          padding: '1.5rem',
+            padding: '1.5rem',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
           <ShoppingCart size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {stats.totalVendas}
-          </div>
+              </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-            Total de Vendas
+                Total de Vendas
+            </div>
           </div>
-        </div>
-        
-        <div style={{
+
+          <div style={{
           background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
           color: 'white',
-          padding: '1.5rem',
+            padding: '1.5rem',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
           <DollarSign size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {formatCurrency(stats.totalFaturamento)}
-          </div>
+              </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-            Faturamento Total
+                Faturamento Total
+            </div>
           </div>
-        </div>
-        
-        <div style={{
+
+          <div style={{
           background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
           color: 'white',
-          padding: '1.5rem',
+            padding: '1.5rem',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
           <TrendingUp size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {formatCurrency(stats.ticketMedio)}
-          </div>
+              </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-            Ticket Médio
+                Ticket Médio
+            </div>
+            </div>
           </div>
-        </div>
-      </div>
 
       {/* Lista de Vendas */}
-      <div style={{
+          <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '1.5rem',
+            padding: '1.5rem',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         border: '1px solid #e2e8f0'
       }}>
         <h2 style={{
-          fontSize: '1.5rem',
+              fontSize: '1.5rem',
           fontWeight: '600',
           color: '#1e293b',
           margin: '0 0 1rem 0',
-          display: 'flex',
-          alignItems: 'center',
+              display: 'flex',
+              alignItems: 'center',
           gap: '0.5rem'
         }}>
           <Calendar size={24} />
@@ -310,9 +310,9 @@ const SalesReports = ({ onBack }) => {
           }}>
             <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
             <p>Nenhuma venda encontrada no período selecionado.</p>
-          </div>
+              </div>
         ) : (
-          <div style={{
+            <div style={{
             display: 'grid',
             gap: '1rem'
           }}>
@@ -322,21 +322,21 @@ const SalesReports = ({ onBack }) => {
                 borderRadius: '8px',
                 padding: '1rem',
                 background: '#f8fafc'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
                   alignItems: 'flex-start',
                   marginBottom: '0.5rem'
                 }}>
                   <div>
-                    <h3 style={{
+            <h3 style={{
                       margin: 0,
                       fontSize: '1.1rem',
                       color: '#1e293b'
                     }}>
                       {sale.cliente_nome || 'Cliente não informado'}
-                    </h3>
+            </h3>
                     <p style={{
                       margin: '0.25rem 0 0 0',
                       color: '#64748b',
@@ -344,27 +344,27 @@ const SalesReports = ({ onBack }) => {
                     }}>
                       {formatDate(sale.created_at)}
                     </p>
-                  </div>
-                  
-                  <div style={{
+              </div>
+
+                        <div style={{
                     textAlign: 'right'
                   }}>
                     <div style={{
                       fontSize: '1.2rem',
-                      fontWeight: '600',
+                        fontWeight: '600',
                       color: '#059669'
-                    }}>
+                      }}>
                       {formatCurrency(sale.valor_total || 0)}
                     </div>
-                    <div style={{
+                      <div style={{
                       fontSize: '0.9rem',
                       color: '#64748b',
                       textTransform: 'capitalize'
                     }}>
                       {sale.metodo_pagamento}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
                 
                 {sale.observacoes && (
                   <p style={{
@@ -376,9 +376,9 @@ const SalesReports = ({ onBack }) => {
                     {sale.observacoes}
                   </p>
                 )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
         )}
       </div>
     </div>

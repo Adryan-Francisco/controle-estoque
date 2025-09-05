@@ -135,7 +135,7 @@ const ProductsPage = ({ onBack }) => {
       <div style={{
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
+          alignItems: 'center',
         height: '50vh',
         fontSize: '1.2rem',
         color: '#666'
@@ -148,7 +148,7 @@ const ProductsPage = ({ onBack }) => {
   return (
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{
+    <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -175,37 +175,37 @@ const ProductsPage = ({ onBack }) => {
         </div>
         
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
-            onClick={onBack}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              background: 'rgba(255, 255, 255, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+            <button
+              onClick={onBack}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: 'rgba(255, 255, 255, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
               borderRadius: '12px',
               color: '#1e293b',
               textDecoration: 'none',
               fontSize: '0.9rem',
               fontWeight: '500',
-              cursor: 'pointer',
+                cursor: 'pointer',
               transition: 'all 0.2s',
               backdropFilter: 'blur(10px)'
-            }}
-          >
-            <ArrowLeft size={18} />
-            Voltar ao Dashboard
-          </button>
+              }}
+            >
+              <ArrowLeft size={18} />
+              Voltar ao Dashboard
+            </button>
 
-          <button
+            <button
             onClick={refreshAllData}
-            disabled={refreshing}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
+              disabled={refreshing}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
               color: 'white',
               border: 'none',
@@ -219,78 +219,78 @@ const ProductsPage = ({ onBack }) => {
           >
             <RefreshCw size={18} />
             {refreshing ? 'Carregando...' : 'Atualizar'}
-          </button>
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* Estatísticas */}
-      <div style={{
-        display: 'grid',
+        <div style={{
+          display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '1rem',
-        marginBottom: '2rem'
-      }}>
-        <div style={{
+          marginBottom: '2rem'
+        }}>
+          <div style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          padding: '1.5rem',
+            padding: '1.5rem',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
           <Package size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {products.length}
-          </div>
+              </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-            Total de Produtos
+                  Total de Produtos
+            </div>
           </div>
-        </div>
-        
-        <div style={{
+
+          <div style={{
           background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
           color: 'white',
-          padding: '1.5rem',
+            padding: '1.5rem',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
           <TrendingUp size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {products.reduce((sum, product) => sum + (product.quantidade || 0), 0)}
-          </div>
+              </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
             Total em Estoque
+            </div>
           </div>
-        </div>
 
-        <div style={{
+          <div style={{
           background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)',
           color: 'white',
-          padding: '1.5rem',
+            padding: '1.5rem',
           borderRadius: '12px',
           textAlign: 'center'
         }}>
           <AlertTriangle size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
             {lowStockProducts.length}
-          </div>
+              </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-            Estoque Baixo
+                  Estoque Baixo
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
       {/* Alertas de Estoque Baixo */}
       {lowStockProducts.length > 0 && (
-        <div style={{
+          <div style={{
           background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
           border: '1px solid #f59e0b',
           borderRadius: '12px',
           padding: '1rem',
           marginBottom: '2rem'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
             gap: '0.5rem',
             marginBottom: '0.5rem'
           }}>
@@ -303,30 +303,30 @@ const ProductsPage = ({ onBack }) => {
             }}>
               Atenção: Produtos com estoque baixo
             </h3>
-          </div>
+              </div>
           <p style={{
             margin: 0,
             fontSize: '0.9rem',
             color: '#92400e'
           }}>
             {lowStockProducts.map(p => p.nome).join(', ')} - Estoque ≤ 5 unidades
-          </p>
-        </div>
+                </p>
+              </div>
       )}
 
       {/* Filtros e Busca */}
-      <div style={{
+        <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '1.5rem',
+          padding: '1.5rem',
         marginBottom: '2rem',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         border: '1px solid #e2e8f0'
-      }}>
-        <div style={{
-          display: 'flex',
+        }}>
+          <div style={{
+            display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+            alignItems: 'center',
           marginBottom: '1rem'
         }}>
           <h2 style={{
@@ -364,9 +364,9 @@ const ProductsPage = ({ onBack }) => {
           </button>
         </div>
         
-        <div style={{
-          display: 'flex',
-          gap: '1rem',
+            <div style={{
+              display: 'flex',
+              gap: '1rem',
           alignItems: 'center'
         }}>
           <div style={{ flex: 1 }}>
@@ -380,20 +380,20 @@ const ProductsPage = ({ onBack }) => {
               Buscar Produtos
             </label>
             <div style={{ position: 'relative' }}>
-              <Search size={20} style={{
-                position: 'absolute',
+                <Search size={20} style={{
+                  position: 'absolute',
                 left: '0.75rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
                 color: '#9ca3af'
-              }} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                }} />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar produtos..."
-                style={{
-                  width: '100%',
+                  style={{
+                    width: '100%',
                   padding: '0.75rem 0.75rem 0.75rem 2.5rem',
                   border: '1px solid #d1d5db',
                   borderRadius: '8px',
@@ -403,8 +403,8 @@ const ProductsPage = ({ onBack }) => {
                 }}
               />
             </div>
-          </div>
-          
+              </div>
+
           <div>
             <label style={{
               display: 'block',
@@ -415,30 +415,30 @@ const ProductsPage = ({ onBack }) => {
             }}>
               Status
             </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
                 padding: '0.75rem',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '1rem',
-                outline: 'none',
+                  outline: 'none',
                 background: 'white',
-                minWidth: '150px'
-              }}
-            >
-              <option value="all">Todos os Status</option>
-              <option value="in_stock">Em Estoque</option>
-              <option value="low_stock">Estoque Baixo</option>
-              <option value="out_of_stock">Sem Estoque</option>
-            </select>
+                  minWidth: '150px'
+                }}
+              >
+                <option value="all">Todos os Status</option>
+                <option value="in_stock">Em Estoque</option>
+                <option value="low_stock">Estoque Baixo</option>
+                <option value="out_of_stock">Sem Estoque</option>
+              </select>
           </div>
         </div>
-      </div>
+            </div>
 
       {/* Tabela de Produtos */}
-      <div style={{
+            <div style={{
         background: 'white',
         borderRadius: '12px',
         padding: '1.5rem',
@@ -650,7 +650,7 @@ const ProductsPage = ({ onBack }) => {
                           borderRadius: '50%',
                           background: '#3b82f6',
                           color: 'white',
-                          display: 'flex',
+              display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '0.8rem',
@@ -659,7 +659,7 @@ const ProductsPage = ({ onBack }) => {
                           {getInitial(product.nome)}
                         </div>
                         <div>
-                          <div style={{
+              <div style={{
                             fontWeight: '500',
                             color: '#1e293b',
                             marginBottom: '0.25rem'
@@ -723,7 +723,7 @@ const ProductsPage = ({ onBack }) => {
                           height: '16px',
                           borderRadius: '50%',
                           background: (product.estoque || 0) > 0 ? '#10b981' : '#ef4444',
-                          display: 'flex',
+                display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           color: 'white',
@@ -738,53 +738,53 @@ const ProductsPage = ({ onBack }) => {
                     
                     <td style={{ padding: '1rem 0.5rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
+                <button
                           onClick={() => handleViewProduct(product)}
-                          style={{
+                  style={{
                             background: '#3b82f6',
                             color: 'white',
-                            border: 'none',
+                    border: 'none',
                             borderRadius: '6px',
                             padding: '0.5rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
                             justifyContent: 'center',
                             transition: 'all 0.2s'
-                          }}
+                  }}
                           title="Visualizar produto"
-                        >
+                >
                           <Eye size={16} />
-                        </button>
+                </button>
                         
-                        <button
+                <button
                           onClick={() => handleEditProduct(product)}
-                          style={{
+                  style={{
                             background: '#10b981',
                             color: 'white',
-                            border: 'none',
+                    border: 'none',
                             borderRadius: '6px',
                             padding: '0.5rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
                             justifyContent: 'center',
                             transition: 'all 0.2s'
-                          }}
+                  }}
                           title="Editar produto"
-                        >
+                >
                           <Edit size={16} />
-                        </button>
-                        
-                        <button
+                </button>
+
+              <button
                           onClick={() => handleDeleteProduct(product.id)}
-                          style={{
+                style={{
                             background: '#ef4444',
-                            color: 'white',
-                            border: 'none',
+                  color: 'white',
+                  border: 'none',
                             borderRadius: '6px',
                             padding: '0.5rem',
-                            cursor: 'pointer',
+                  cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -793,8 +793,8 @@ const ProductsPage = ({ onBack }) => {
                           title="Excluir produto"
                         >
                           <Trash2 size={16} />
-                        </button>
-                      </div>
+              </button>
+            </div>
                     </td>
                   </tr>
                 ))}
@@ -802,7 +802,7 @@ const ProductsPage = ({ onBack }) => {
             </table>
           </div>
         )}
-      </div>
+        </div>
 
       {/* Formulário de Produto */}
       {showForm && (
@@ -840,35 +840,35 @@ const ProductsPage = ({ onBack }) => {
               }}>
                 {editingProduct ? 'Editar Produto' : 'Novo Produto'}
               </h2>
-            </div>
-            
+      </div>
+
             <div style={{ padding: '1.5rem' }}>
-              <ProductForm
-                product={editingProduct}
-                onSave={handleSaveProduct}
-                onCancel={handleCancelForm}
-              />
-            </div>
+        <ProductForm
+          product={editingProduct}
+          onSave={handleSaveProduct}
+          onCancel={handleCancelForm}
+        />
+    </div>
           </div>
         </div>
       )}
 
       {/* Modal de Visualização */}
       {viewingProduct && (
-        <div style={{
+      <div style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
           background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
+        display: 'flex',
+        alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
           padding: '1rem'
-        }}>
-          <div style={{
+      }}>
+        <div style={{
             background: 'white',
             borderRadius: '12px',
             width: '100%',
@@ -876,8 +876,8 @@ const ProductsPage = ({ onBack }) => {
             maxHeight: '90vh',
             overflow: 'auto',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-          }}>
-            <div style={{
+        }}>
+          <div style={{
               padding: '1.5rem',
               borderBottom: '1px solid #e2e8f0',
               display: 'flex',
@@ -892,42 +892,42 @@ const ProductsPage = ({ onBack }) => {
               }}>
                 Detalhes do Produto
               </h2>
-              <button
+        <button
                 onClick={() => setViewingProduct(null)}
-                style={{
+          style={{
                   background: '#ef4444',
                   color: 'white',
-                  border: 'none',
+            border: 'none',
                   borderRadius: '6px',
                   padding: '0.5rem',
-                  cursor: 'pointer',
+            cursor: 'pointer',
                   fontSize: '1.2rem',
                   width: '32px',
                   height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
               >
                 ×
-              </button>
-            </div>
-            
+        </button>
+      </div>
+
             <div style={{ padding: '1.5rem' }}>
-              <div style={{
+      <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
                 marginBottom: '2rem'
-              }}>
-                <div style={{
+      }}>
+        <div style={{
                   width: '64px',
                   height: '64px',
                   borderRadius: '50%',
                   background: '#3b82f6',
                   color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
+          display: 'flex',
+          alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '1.5rem',
                   fontWeight: '600'
@@ -937,7 +937,7 @@ const ProductsPage = ({ onBack }) => {
                 <div>
                   <h3 style={{
                     fontSize: '1.25rem',
-                    fontWeight: '600',
+            fontWeight: '600',
                     color: '#1e293b',
                     margin: '0 0 0.5rem 0'
                   }}>
@@ -950,10 +950,10 @@ const ProductsPage = ({ onBack }) => {
                   }}>
                     ID: {viewingProduct.id}
                   </p>
-                </div>
+        </div>
               </div>
 
-              <div style={{
+        <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '1rem',
@@ -975,13 +975,13 @@ const ProductsPage = ({ onBack }) => {
                   </h4>
                   <p style={{
                     fontSize: '1.5rem',
-                    fontWeight: '700',
+            fontWeight: '700',
                     color: '#1e293b',
                     margin: 0
-                  }}>
+          }}>
                     {viewingProduct.quantidade || 0}
                   </p>
-                </div>
+        </div>
 
                 <div style={{
                   background: '#f8fafc',
@@ -1005,7 +1005,7 @@ const ProductsPage = ({ onBack }) => {
                   }}>
                     {formatCurrency(viewingProduct.valor_unit || 0)}
                   </p>
-                </div>
+      </div>
 
                 <div style={{
                   background: '#f0fdf4',
@@ -1056,17 +1056,17 @@ const ProductsPage = ({ onBack }) => {
                 </div>
               </div>
 
-              <div style={{
-                display: 'flex',
+          <div style={{
+            display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '1rem'
-              }}>
-                <button
+          }}>
+            <button
                   onClick={() => setViewingProduct(null)}
-                  style={{
+              style={{
                     background: '#64748b',
                     color: 'white',
-                    border: 'none',
+                border: 'none',
                     borderRadius: '8px',
                     padding: '0.75rem 1.5rem',
                     fontSize: '0.9rem',
@@ -1075,17 +1075,17 @@ const ProductsPage = ({ onBack }) => {
                   }}
                 >
                   Fechar
-                </button>
+            </button>
                 
-                <button
+            <button
                   onClick={() => {
                     setViewingProduct(null)
                     handleEditProduct(viewingProduct)
                   }}
-                  style={{
+              style={{
                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     color: 'white',
-                    border: 'none',
+                border: 'none',
                     borderRadius: '8px',
                     padding: '0.75rem 1.5rem',
                     fontSize: '0.9rem',
@@ -1094,9 +1094,9 @@ const ProductsPage = ({ onBack }) => {
                   }}
                 >
                   Editar Produto
-                </button>
-              </div>
-            </div>
+            </button>
+          </div>
+        </div>
           </div>
         </div>
       )}
@@ -1144,59 +1144,59 @@ const ProductForm = ({ product, onSave, onCancel }) => {
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{
-          display: 'block',
+          <label style={{
+            display: 'block',
           fontSize: '0.9rem',
           fontWeight: '500',
           color: '#374151',
           marginBottom: '0.5rem'
         }}>
           Nome do Produto *
-        </label>
-        <input
+          </label>
+          <input
           type="text"
           value={formData.nome}
           onChange={(e) => setFormData({...formData, nome: e.target.value})}
           placeholder="Ex: BANDEJA ULTRAFEST 5 PRATA"
-          style={{
-            width: '100%',
-            padding: '0.75rem',
+            style={{
+              width: '100%',
+              padding: '0.75rem',
             border: '1px solid #d1d5db',
             borderRadius: '8px',
             fontSize: '1rem',
             outline: 'none'
           }}
-        />
-      </div>
-      
+          />
+        </div>
+
       
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{
-          display: 'block',
+          <label style={{
+            display: 'block',
           fontSize: '0.9rem',
           fontWeight: '500',
           color: '#374151',
           marginBottom: '0.5rem'
         }}>
           Preço Unitário *
-        </label>
+          </label>
         <input
           type="number"
           step="0.01"
           value={formData.preco}
           onChange={(e) => setFormData({...formData, preco: parseFloat(e.target.value) || 0})}
           placeholder="0.00"
-          style={{
-            width: '100%',
-            padding: '0.75rem',
+            style={{
+              width: '100%',
+              padding: '0.75rem',
             border: '1px solid #d1d5db',
             borderRadius: '8px',
             fontSize: '1rem',
             outline: 'none'
           }}
-        />
-      </div>
-      
+          />
+        </div>
+
       <div style={{ marginBottom: '1rem' }}>
         <label style={{
           display: 'block',
@@ -1221,7 +1221,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             outline: 'none'
           }}
         />
-      </div>
+          </div>
       
       <div style={{ marginBottom: '1.5rem' }}>
         <label style={{
@@ -1247,17 +1247,17 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             outline: 'none'
           }}
         />
-      </div>
-      
-      <div style={{
-        display: 'flex',
+          </div>
+
+        <div style={{
+          display: 'flex',
         justifyContent: 'flex-end',
         gap: '1rem'
-      }}>
-        <button
-          type="button"
+        }}>
+          <button
+            type="button"
           onClick={onCancel}
-          style={{
+            style={{
             background: '#64748b',
             color: 'white',
             border: 'none',
@@ -1266,16 +1266,16 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             fontSize: '0.9rem',
             fontWeight: '500',
             cursor: 'pointer'
-          }}
-        >
-          Cancelar
-        </button>
+            }}
+          >
+            Cancelar
+          </button>
         
-        <button
-          type="submit"
-          style={{
+          <button
+            type="submit"
+            style={{
             background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: 'white',
+              color: 'white',
             border: 'none',
             borderRadius: '8px',
             padding: '0.75rem 1.5rem',
@@ -1285,9 +1285,9 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           }}
         >
           {product ? 'Atualizar' : 'Salvar'}
-        </button>
-      </div>
-    </form>
+          </button>
+        </div>
+      </form>
   )
 }
 
