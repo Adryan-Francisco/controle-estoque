@@ -17,7 +17,7 @@ const Dashboard = ({ onNavigateToProducts }) => {
   const [testProduct, setTestProduct] = useState(null)
   const [editingProduct, setEditingProduct] = useState(null)
   const { user } = useAuth()
-  const { products, loading, addProduct, updateProduct, deleteProduct, refreshAllData, syncLocalData } = useData()
+  const { products, movements, sales, bolos, isLoading, addProduct, deleteProduct, refreshAllData, syncLocalData } = useData()
 
   useEffect(() => {
     // Não precisa chamar refreshAllData aqui pois o DataContext já faz isso automaticamente
@@ -25,15 +25,9 @@ const Dashboard = ({ onNavigateToProducts }) => {
 
   const handleSaveProduct = async (productData) => {
     try {
-      if (editingProduct) {
-        // Atualizar produto existente
-        const { error } = await updateProduct(editingProduct.id, productData)
-        if (error) throw error
-      } else {
-        // Criar novo produto
-        const { error } = await addProduct(productData)
-        if (error) throw error
-      }
+      // Criar novo produto
+      const { error } = await addProduct(productData)
+      if (error) throw error
 
       setShowForm(false)
       setEditingProduct(null)
@@ -97,7 +91,7 @@ const Dashboard = ({ onNavigateToProducts }) => {
     }).format(value)
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

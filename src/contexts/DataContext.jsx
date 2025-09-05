@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 
@@ -15,609 +15,444 @@ export const useData = () => {
 export const DataProvider = ({ children }) => {
   const [products, setProducts] = useState([])
   const [movements, setMovements] = useState([])
-  const [sales, setSales] = useState([
-    {
-      id: 1,
-      cliente_nome: 'Cliente Exemplo',
-      cliente_email: 'cliente@exemplo.com',
-      cliente_telefone: '(11) 99999-9999',
-      metodo_pagamento: 'vista',
-      observacoes: 'Bolo de chocolate para aniversário',
-      valor_total: 50.00,
-      itens: [
-        {
-          produto_id: 1,
-          nome: 'Bolo de Chocolate',
-          peso: 1.5,
-          preco_por_kg: 30.00,
-          preco_total: 45.00
-        }
-      ],
-              user_id: 'exemplo',
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 2,
-        cliente_nome: 'Maria Silva',
-        cliente_email: 'maria@email.com',
-        cliente_telefone: '(11) 88888-8888',
-        metodo_pagamento: 'pix',
-        observacoes: 'Bolo de morango para casamento',
-        valor_total: 120.00,
-        itens: [
-          {
-            produto_id: 2,
-            nome: 'Bolo de Morango',
-            peso: 3.0,
-            preco_por_kg: 40.00,
-            preco_total: 120.00
-          }
-        ],
-        user_id: 'exemplo',
-        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-    }
-  ])
-  const [loading, setLoading] = useState(false)
+  const [sales, setSales] = useState([])
+  const [bolos, setBolos] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [lastDataFetch, setLastDataFetch] = useState(0)
+  const [cache, setCache] = useState({})
+  
+  // Configurações de throttling
+  const FETCH_INTERVAL = 300000 // 5 minutos
+  const REQUEST_TIMEOUT = 20000 // 20 segundos
+  const MAX_RETRIES = 2
+  
   const { user } = useAuth()
 
+  // Função para fazer requisições com timeout e retry
+  const makeRequest = useCallback(async (requestFn, retries = MAX_RETRIES) => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+        
+        const result = await requestFn()
+        clearTimeout(timeoutId)
+        
+        return result
+      } catch (error) {
+        console.log(`🔄 Tentativa ${i + 1}/${retries + 1} falhou:`, error.message)
+        
+        if (i === retries) {
+          throw error
+        }
+        
+        // Aguardar antes da próxima tentativa
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
+      }
+    }
+  }, [REQUEST_TIMEOUT, MAX_RETRIES])
+
   // Limpar todos os dados quando o usuário mudar
-  const clearAllData = () => {
+  const clearAllData = useCallback(() => {
     console.log('🧹 Limpando todos os dados do usuário anterior')
     setProducts([])
     setMovements([])
-    // Manter dados de exemplo de vendas sempre visíveis
-    setSales([
-      {
-        id: 1,
-        cliente_nome: 'Cliente Exemplo',
-        cliente_email: 'cliente@exemplo.com',
-        cliente_telefone: '(11) 99999-9999',
-        metodo_pagamento: 'vista',
-        observacoes: 'Bolo de chocolate para aniversário',
-        valor_total: 50.00,
-        itens: [
-          {
-            produto_id: 1,
-            nome: 'Bolo de Chocolate',
-            peso: 1.5,
-            preco_por_kg: 30.00,
-            preco_total: 45.00
-          }
-        ],
-        user_id: 'exemplo',
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 2,
-        cliente_nome: 'Maria Silva',
-        cliente_email: 'maria@email.com',
-        cliente_telefone: '(11) 88888-8888',
-        metodo_pagamento: 'pix',
-        observacoes: 'Bolo de morango para casamento',
-        valor_total: 120.00,
-        itens: [
-          {
-            produto_id: 2,
-            nome: 'Bolo de Morango',
-            peso: 3.0,
-            preco_por_kg: 40.00,
-            preco_total: 120.00
-          }
-        ],
-        user_id: 'exemplo',
-        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ])
-  }
+    setSales([])
+    setBolos([])
+    setCache({})
+    setLastDataFetch(0)
+  }, [])
 
-  // Dados mock para garantir funcionamento
-  const mockProducts = [
-    {
-      id: 1,
-      nome: 'Bolo de Chocolate',
-      descricao: 'Delicioso bolo de chocolate',
-      preco: 25.50,
-      valor_unit: 25.50,
-      estoque: 10,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 2,
-      nome: 'Bolo de Morango',
-      descricao: 'Bolo de morango com creme',
-      preco: 30.00,
-      valor_unit: 30.00,
-      estoque: 5,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 3,
-      nome: 'Bolo de Cenoura',
-      descricao: 'Bolo de cenoura com cobertura',
-      preco: 28.00,
-      valor_unit: 28.00,
-      estoque: 8,
-      created_at: new Date().toISOString()
+  // Buscar produtos com cache e throttling
+  const fetchProducts = useCallback(async (forceRefresh = false) => {
+    if (!user) return
+
+    const now = Date.now()
+    const cacheKey = `products_${user.id}`
+    
+    // Verificar cache
+    if (!forceRefresh && cache[cacheKey] && (now - cache[cacheKey].timestamp) < FETCH_INTERVAL) {
+      console.log('📦 Usando cache para produtos')
+      setProducts(cache[cacheKey].data)
+      return
     }
-  ]
 
-  const mockMovements = [
-    {
-      id: 1,
-      tipo: 'entrada',
-      quantidade: 5,
-      motivo: 'Compra inicial',
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 2,
-      tipo: 'saida',
-      quantidade: 2,
-      motivo: 'Venda',
-      created_at: new Date().toISOString()
-    }
-  ]
-
-  const mockSales = [
-    {
-      id: 1,
-      cliente_nome: 'Cliente Exemplo',
-      valor_total: 50.00,
-      metodo_pagamento: 'vista',
-      created_at: new Date().toISOString()
-    }
-  ]
-
-  // Buscar produtos do usuário atual com debounce
-  const fetchProducts = async () => {
-    if (!user) {
-      setProducts([])
+    // Verificar throttling
+    if (!forceRefresh && (now - lastDataFetch) < FETCH_INTERVAL) {
+      console.log('⏳ Throttling: aguardando para buscar produtos')
       return
     }
 
     try {
-      setLoading(true)
       console.log('🔄 Buscando produtos do Supabase...')
-      
-      // Verificar se já temos dados recentes (evitar requisições desnecessárias)
-      const now = Date.now()
-      const lastFetch = localStorage.getItem('lastProductsFetch')
-      if (lastFetch && (now - parseInt(lastFetch)) < 30000) { // 30 segundos
-        console.log('⏭️ Pulando busca de produtos - dados recentes')
-        setLoading(false)
-        return
-      }
+      setIsLoading(true)
+      setLastDataFetch(now)
 
-      // Buscar produtos reais do Supabase com timeout
-      const { data, error } = await Promise.race([
-        supabase
-          .from('produtos')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 10000)
-        )
-      ])
+      const requestFn = () => supabase
+        .from('produtos')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      const { data, error } = await makeRequest(requestFn)
 
       if (error) {
         console.error('❌ Erro ao buscar produtos:', error)
-        setProducts(mockProducts)
-      } else {
-        console.log('✅ Produtos carregados do Supabase:', data?.length || 0, 'itens')
-        setProducts(data || [])
-        localStorage.setItem('lastProductsFetch', now.toString())
+        // Usar dados locais se houver
+        const localData = JSON.parse(localStorage.getItem(`products_${user.id}`) || '[]')
+        setProducts(localData)
+        return
       }
+
+      console.log('✅ Produtos carregados:', data?.length || 0)
+      setProducts(data || [])
       
+      // Atualizar cache
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: data || [],
+          timestamp: now
+        }
+      }))
+
+      // Salvar no localStorage
+      localStorage.setItem(`products_${user.id}`, JSON.stringify(data || []))
+
     } catch (error) {
-      console.error('❌ Erro crítico:', error)
-      setProducts(mockProducts)
+      console.error('❌ Erro crítico ao buscar produtos:', error)
+      // Usar dados locais
+      const localData = JSON.parse(localStorage.getItem(`products_${user.id}`) || '[]')
+      setProducts(localData)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
-  }
+  }, [user, cache, lastDataFetch, FETCH_INTERVAL, makeRequest])
 
-  // Buscar movimentações do usuário atual com debounce
-  const fetchMovements = async () => {
-    if (!user) {
-      setMovements([])
+  // Buscar movimentações com cache e throttling
+  const fetchMovements = useCallback(async (forceRefresh = false) => {
+    if (!user) return
+
+    const now = Date.now()
+    const cacheKey = `movements_${user.id}`
+    
+    // Verificar cache
+    if (!forceRefresh && cache[cacheKey] && (now - cache[cacheKey].timestamp) < FETCH_INTERVAL) {
+      console.log('📦 Usando cache para movimentações')
+      setMovements(cache[cacheKey].data)
+      return
+    }
+
+    // Verificar throttling
+    if (!forceRefresh && (now - lastDataFetch) < FETCH_INTERVAL) {
+      console.log('⏳ Throttling: aguardando para buscar movimentações')
       return
     }
 
     try {
-      console.log('🔄 Buscando movimentações...')
-      
-      // Verificar se já temos dados recentes (evitar requisições desnecessárias)
-      const now = Date.now()
-      const lastFetch = localStorage.getItem('lastMovementsFetch')
-      if (lastFetch && (now - parseInt(lastFetch)) < 30000) { // 30 segundos
-        console.log('⏭️ Pulando busca de movimentações - dados recentes')
-        return
-      }
-      
-      // Usar dados mock para garantir funcionamento
-      setMovements(mockMovements)
-      
-      // Tentar buscar do Supabase em background com timeout
-      setTimeout(async () => {
-        try {
-          const { data, error } = await Promise.race([
-            supabase
-              .from('movimentacoes')
-              .select('*')
-              .limit(3),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), 8000)
-            )
-          ])
+      console.log('🔄 Buscando movimentações do Supabase...')
+      setIsLoading(true)
+      setLastDataFetch(now)
 
-          if (!error && data) {
-            console.log('✅ Movimentações carregadas:', data.length, 'itens')
-            setMovements(data)
-            localStorage.setItem('lastMovementsFetch', now.toString())
-          }
-        } catch (networkError) {
-          console.log('⚠️ Erro de rede, mantendo dados mock')
-        }
-      }, 1000)
-      
-    } catch (error) {
-      console.error('❌ Erro crítico:', error)
-      setMovements(mockMovements)
-    }
-  }
+      const requestFn = () => supabase
+        .from('movimentacoes')
+        .select('*, produtos(nome)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-  // Buscar vendas do usuário atual
-  const fetchSales = async () => {
-    if (!user) {
-      setSales([])
-      return
-    }
-
-    try {
-      console.log('🔄 Buscando vendas...')
-      
-      // Usar dados mock para garantir funcionamento
-      setSales(mockSales)
-      
-      // Tentar buscar do Supabase em background
-      setTimeout(async () => {
-        try {
-          const { data, error } = await supabase
-            .from('vendas')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(10)
-
-          if (!error && data) {
-            console.log('✅ Vendas carregadas:', data.length, 'itens')
-            setSales(data)
-          }
-        } catch (networkError) {
-          console.log('⚠️ Erro de rede, mantendo dados mock')
-        }
-      }, 1000)
-      
-    } catch (error) {
-      console.error('❌ Erro crítico:', error)
-      setSales(mockSales)
-    }
-  }
-
-  // Buscar bolos do usuário atual
-  const fetchBolos = async () => {
-    if (!user) {
-      return
-    }
-
-    try {
-      console.log('🔄 Buscando bolos...')
-      
-      // Verificar se já temos dados recentes (evitar requisições desnecessárias)
-      const now = Date.now()
-      const lastFetch = localStorage.getItem('lastBolosFetch')
-      if (lastFetch && (now - parseInt(lastFetch)) < 30000) { // 30 segundos
-        console.log('⏭️ Pulando busca de bolos - dados recentes')
-        return
-      }
-
-      const { data, error } = await Promise.race([
-        supabase
-          .from('bolos')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 8000)
-        )
-      ])
+      const { data, error } = await makeRequest(requestFn)
 
       if (error) {
-        console.log('⚠️ Erro ao buscar bolos:', error.message)
-      } else {
-        console.log('✅ Bolos carregados:', data?.length || 0, 'itens')
-        // Atualizar localStorage com bolos do Supabase
-        if (data && data.length > 0) {
-          localStorage.setItem('bolos', JSON.stringify(data))
-          localStorage.setItem('lastBolosFetch', now.toString())
-        }
+        console.error('❌ Erro ao buscar movimentações:', error)
+        // Usar dados locais se houver
+        const localData = JSON.parse(localStorage.getItem(`movements_${user.id}`) || '[]')
+        setMovements(localData)
+        return
       }
+
+      console.log('✅ Movimentações carregadas:', data?.length || 0)
+      setMovements(data || [])
+      
+      // Atualizar cache
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: data || [],
+          timestamp: now
+        }
+      }))
+
+      // Salvar no localStorage
+      localStorage.setItem(`movements_${user.id}`, JSON.stringify(data || []))
+
     } catch (error) {
-      console.log('⚠️ Erro na busca de bolos:', error.message)
+      console.error('❌ Erro crítico ao buscar movimentações:', error)
+      // Usar dados locais
+      const localData = JSON.parse(localStorage.getItem(`movements_${user.id}`) || '[]')
+      setMovements(localData)
+    } finally {
+      setIsLoading(false)
     }
-  }
+  }, [user, cache, lastDataFetch, FETCH_INTERVAL, makeRequest])
+
+  // Buscar bolos com cache e throttling
+  const fetchBolos = useCallback(async (forceRefresh = false) => {
+    if (!user) return
+
+    const now = Date.now()
+    const cacheKey = `bolos_${user.id}`
+    
+    // Verificar cache
+    if (!forceRefresh && cache[cacheKey] && (now - cache[cacheKey].timestamp) < FETCH_INTERVAL) {
+      console.log('📦 Usando cache para bolos')
+      setBolos(cache[cacheKey].data)
+      return
+    }
+
+    // Verificar throttling
+    if (!forceRefresh && (now - lastDataFetch) < FETCH_INTERVAL) {
+      console.log('⏳ Throttling: aguardando para buscar bolos')
+      return
+    }
+
+    try {
+      console.log('🔄 Buscando bolos do Supabase...')
+      setIsLoading(true)
+      setLastDataFetch(now)
+
+      const requestFn = () => supabase
+        .from('bolos')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      const { data, error } = await makeRequest(requestFn)
+
+      if (error) {
+        console.error('❌ Erro ao buscar bolos:', error)
+        // Usar dados locais se houver
+        const localData = JSON.parse(localStorage.getItem(`bolos_${user.id}`) || '[]')
+        setBolos(localData)
+        return
+      }
+
+      console.log('✅ Bolos carregados:', data?.length || 0)
+      setBolos(data || [])
+      
+      // Atualizar cache
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: data || [],
+          timestamp: now
+        }
+      }))
+
+      // Salvar no localStorage
+      localStorage.setItem(`bolos_${user.id}`, JSON.stringify(data || []))
+
+    } catch (error) {
+      console.error('❌ Erro crítico ao buscar bolos:', error)
+      // Usar dados locais
+      const localData = JSON.parse(localStorage.getItem(`bolos_${user.id}`) || '[]')
+      setBolos(localData)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [user, cache, lastDataFetch, FETCH_INTERVAL, makeRequest])
+
+  // Buscar vendas com cache e throttling
+  const fetchSales = useCallback(async (forceRefresh = false) => {
+    if (!user) return
+
+    const now = Date.now()
+    const cacheKey = `sales_${user.id}`
+    
+    // Verificar cache
+    if (!forceRefresh && cache[cacheKey] && (now - cache[cacheKey].timestamp) < FETCH_INTERVAL) {
+      console.log('📦 Usando cache para vendas')
+      setSales(cache[cacheKey].data)
+      return
+    }
+
+    // Verificar throttling
+    if (!forceRefresh && (now - lastDataFetch) < FETCH_INTERVAL) {
+      console.log('⏳ Throttling: aguardando para buscar vendas')
+      return
+    }
+
+    try {
+      console.log('🔄 Buscando vendas do Supabase...')
+      setIsLoading(true)
+      setLastDataFetch(now)
+
+      const requestFn = () => supabase
+        .from('vendas')
+        .select('*, venda_itens(*)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      const { data, error } = await makeRequest(requestFn)
+
+      if (error) {
+        console.error('❌ Erro ao buscar vendas:', error)
+        // Usar dados locais se houver
+        const localData = JSON.parse(localStorage.getItem(`sales_${user.id}`) || '[]')
+        setSales(localData)
+        return
+      }
+
+      console.log('✅ Vendas carregadas:', data?.length || 0)
+      setSales(data || [])
+      
+      // Atualizar cache
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: data || [],
+          timestamp: now
+        }
+      }))
+
+      // Salvar no localStorage
+      localStorage.setItem(`sales_${user.id}`, JSON.stringify(data || []))
+
+    } catch (error) {
+      console.error('❌ Erro crítico ao buscar vendas:', error)
+      // Usar dados locais
+      const localData = JSON.parse(localStorage.getItem(`sales_${user.id}`) || '[]')
+      setSales(localData)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [user, cache, lastDataFetch, FETCH_INTERVAL, makeRequest])
+
+  // Atualizar todos os dados
+  const refreshAllData = useCallback(async (forceRefresh = false) => {
+    if (!user) return
+
+    console.log('🔄 Atualizando todos os dados...')
+    
+    // Executar todas as buscas em paralelo, mas com throttling
+    const promises = []
+    
+    // Adicionar delay entre as requisições para evitar sobrecarga
+    promises.push(fetchProducts(forceRefresh))
+    
+    setTimeout(() => {
+      promises.push(fetchMovements(forceRefresh))
+    }, 1000)
+    
+    setTimeout(() => {
+      promises.push(fetchBolos(forceRefresh))
+    }, 2000)
+    
+    setTimeout(() => {
+      promises.push(fetchSales(forceRefresh))
+    }, 3000)
+
+    try {
+      await Promise.allSettled(promises)
+      console.log('✅ Todos os dados atualizados')
+    } catch (error) {
+      console.error('❌ Erro ao atualizar dados:', error)
+    }
+  }, [user, fetchProducts, fetchMovements, fetchBolos, fetchSales])
 
   // Adicionar produto
-  // Adicionar produto - FUNCIONANDO 100% LOCAL
   const addProduct = async (productData) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
       console.log('📝 Adicionando produto:', productData)
-      console.log('👤 Usuário atual:', user.id)
       
-      // SEMPRE salvar localmente primeiro (sistema 100% funcional)
-      const newProduct = {
-        id: Date.now(),
-        ...productData,
-        user_id: user.id,
-        created_at: new Date().toISOString()
+      const productToInsert = {
+        nome: productData.nome,
+        descricao: productData.descricao || '',
+        preco: Number(productData.preco || 0),
+        estoque_atual: Number(productData.estoque_atual || 0),
+        estoque_minimo: Number(productData.estoque_minimo || 0),
+        categoria: productData.categoria || 'Geral',
+        user_id: user.id
       }
-      
-              setProducts(prev => [newProduct, ...prev])
-        console.log('✅ Produto salvo localmente:', newProduct.nome)
-        console.log('📊 Sistema funcionando 100% - dados salvos localmente')
+
+      // Tentar salvar no Supabase primeiro
+      try {
+        const { data, error } = await supabase
+          .from('produtos')
+          .insert([productToInsert])
+          .select()
+
+        if (error) {
+          console.error('❌ Erro ao salvar produto no Supabase:', error)
+          throw error
+        }
+
+        console.log('✅ Produto salvo no Supabase:', data[0].id)
         
-        // Mostrar notificação de sucesso
+        // Atualizar estado local
+        setProducts(prev => [data[0], ...prev])
+        
+        // Atualizar cache
+        const cacheKey = `products_${user.id}`
+        setCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: [data[0], ...(prev[cacheKey]?.data || [])],
+            timestamp: Date.now()
+          }
+        }))
+
+        // Salvar no localStorage
+        const updatedProducts = [data[0], ...products]
+        localStorage.setItem(`products_${user.id}`, JSON.stringify(updatedProducts))
+
         if (window.showNotification) {
           window.showNotification('✅ Produto cadastrado com sucesso!', 'success')
         }
 
-      // Tentar salvar no Supabase em background (sem bloquear)
-      setTimeout(async () => {
-        try {
-          console.log('🔄 Tentando sincronizar produto com Supabase em background...')
-          
-          const mappedData = {
-            nome: productData.nome,
-            valor_unit: Number(productData.valor_unit || productData.preco || 0),
-            quantidade: Number(productData.quantidade || 0),
-            valor_total: Number(productData.valor_total || 0),
-            entrada: Number(productData.entrada || 0),
-            saida: Number(productData.saida || 0),
-            estoque: Number(productData.estoque || productData.quantidade || 0),
-            user_id: user.id
-          }
-          
-          const { data, error } = await supabase
-            .from('produtos')
-            .insert([mappedData])
-            .select()
-
-          if (error) {
-            console.log('⚠️ Falha na sincronização Supabase (normal devido ao RLS):', error.message)
-          } else {
-            console.log('✅ Produto sincronizado com Supabase:', data[0]?.id)
-          }
-        } catch (syncError) {
-          console.log('⚠️ Erro na sincronização em background:', syncError.message)
+        return { data: data[0], error: null }
+      } catch (supabaseError) {
+        console.log('⚠️ Erro no Supabase, salvando localmente')
+        
+        // Salvar localmente
+        const newProduct = {
+          id: Date.now(),
+          ...productToInsert,
+          created_at: new Date().toISOString()
         }
-      }, 1000)
 
-      return { data: newProduct, error: null }
+        setProducts(prev => [newProduct, ...prev])
+        
+        // Salvar no localStorage
+        const updatedProducts = [newProduct, ...products]
+        localStorage.setItem(`products_${user.id}`, JSON.stringify(updatedProducts))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Produto cadastrado localmente!', 'success')
+        }
+
+        return { data: newProduct, error: null }
+      }
     } catch (error) {
       console.error('❌ Erro crítico ao adicionar produto:', error)
-      
-      // Mostrar notificação de erro
-      if (window.showNotification) {
-        window.showNotification('❌ Erro ao cadastrar produto. Tente novamente.', 'error')
-      }
-      
-      // Em caso de erro crítico, salvar localmente
-      const newProduct = {
-        id: Date.now(),
-        ...productData,
-        user_id: user.id,
-        created_at: new Date().toISOString()
-      }
-      setProducts(prev => [newProduct, ...prev])
-      console.log('✅ Produto salvo localmente (erro crítico)')
-      return { data: newProduct, error: null }
+      return { error: error.message }
     }
   }
 
-  // Atualizar produto
-  const updateProduct = async (id, productData) => {
+  // Adicionar bolo
+  const addBolo = async (boloData) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      console.log('📝 Atualizando produto:', productData)
+      console.log('📝 Adicionando bolo:', boloData)
       
-      // Mapear campos corretamente para a tabela produtos (sem descricao)
-      const mappedData = {
-        nome: productData.nome,
-        valor_unit: Number(productData.valor_unit || productData.preco || 0),
-        quantidade: Number(productData.quantidade || 0),
-        valor_total: Number(productData.valor_total || 0),
-        entrada: Number(productData.entrada || 0),
-        saida: Number(productData.saida || 0),
-        estoque: Number(productData.estoque || productData.quantidade || 0)
-      }
+      // Verificar se o usuário está autenticado no Supabase
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
       
-      const { data, error } = await supabase
-        .from('produtos')
-        .update(mappedData)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-
-      if (error) {
-        console.error('❌ Erro ao atualizar produto no Supabase:', error)
-        return { data: null, error }
-      }
-
-      // Atualizar lista local
-      const updatedProduct = data[0]
-      setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p))
-      
-      console.log('✅ Produto atualizado:', updatedProduct.nome)
-      return { data: updatedProduct, error: null }
-    } catch (error) {
-      console.error('Erro ao atualizar produto:', error)
-      return { data: null, error }
-    }
-  }
-
-  // Deletar produto
-  const deleteProduct = async (id) => {
-    if (!user) return { error: 'Usuário não autenticado' }
-
-    try {
-      // Deletar no Supabase
-      const { error } = await supabase
-        .from('produtos')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('❌ Erro ao deletar produto no Supabase:', error)
-        return { error }
-      }
-
-      // Atualizar lista local
-      setProducts(prev => prev.filter(p => p.id !== id))
-      
-      console.log('✅ Produto deletado com sucesso')
-      return { error: null }
-    } catch (error) {
-      console.error('Erro ao deletar produto:', error)
-      return { error }
-    }
-  }
-
-      // Adicionar bolo - APENAS COM AUTENTICAÇÃO
-    const addBolo = async (boloData) => {
-      if (!user) return { error: 'Usuário não autenticado' }
-
-      try {
-        console.log('📝 Adicionando bolo:', boloData)
-        console.log('👤 Usuário atual:', user.id)
+      if (authError || !authUser) {
+        console.log('❌ Usuário não autenticado no Supabase, salvando localmente')
         
-        // Verificar se o usuário está autenticado no Supabase
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-        
-        if (authError || !authUser) {
-          console.log('❌ Usuário não autenticado no Supabase, salvando localmente')
-          
-          const newBolo = {
-            id: Date.now(),
-            ...boloData,
-            user_id: user.id,
-            created_at: new Date().toISOString()
-          }
-          
-          console.log('✅ Bolo salvo localmente (usuário não autenticado):', newBolo.nome)
-          
-          if (window.showNotification) {
-            window.showNotification('✅ Bolo cadastrado localmente!', 'success')
-          }
-          
-          return { data: newBolo, error: null }
-        }
-
-        console.log('✅ Usuário autenticado no Supabase:', authUser.email)
-        
-        // Verificar se a tabela bolos existe
-        console.log('🔍 Verificando se a tabela bolos existe...')
-        const { data: testData, error: testError } = await supabase
-          .from('bolos')
-          .select('*')
-          .limit(1)
-
-        if (testError) {
-          console.error('❌ Tabela bolos não existe ou não acessível:', testError)
-          console.error('❌ Código:', testError.code)
-          console.error('❌ Mensagem:', testError.message)
-          
-          // Salvar localmente se a tabela não existir
-          const newBolo = {
-            id: Date.now(),
-            ...boloData,
-            user_id: user.id,
-            created_at: new Date().toISOString()
-          }
-          
-          console.log('✅ Bolo salvo localmente (tabela bolos não existe):', newBolo.nome)
-          
-          if (window.showNotification) {
-            window.showNotification('✅ Bolo cadastrado localmente!', 'success')
-          }
-          
-          return { data: newBolo, error: null }
-        }
-
-        console.log('✅ Tabela bolos existe, tentando inserir...')
-        
-        // Preparar dados para inserção com user_id
-        const boloDataToInsert = {
-          nome: boloData.nome,
-          descricao: boloData.descricao || '',
-          preco_por_kg: Number(boloData.preco_por_kg || 0),
-          categoria: boloData.categoria || 'Tradicional',
-          user_id: authUser.id // Usar o ID do usuário autenticado
-        }
-        
-        console.log('🔍 Dados do bolo para inserção:', boloDataToInsert)
-        
-        // Tentar salvar no Supabase
-        console.log('🔄 Enviando requisição para Supabase...')
-        const { data, error } = await supabase
-          .from('bolos')
-          .insert([boloDataToInsert])
-          .select()
-
-        console.log('📡 Resposta do Supabase:', { data, error })
-
-        if (error) {
-          console.error('❌ Erro ao salvar bolo no Supabase:', error)
-          console.error('❌ Código do erro:', error.code)
-          console.error('❌ Mensagem do erro:', error.message)
-          console.error('❌ Detalhes completos:', JSON.stringify(error, null, 2))
-          
-          // Se der erro no Supabase, salvar localmente
-          const newBolo = {
-            id: Date.now(),
-            ...boloData,
-            user_id: user.id,
-            created_at: new Date().toISOString()
-          }
-          
-          console.log('✅ Bolo salvo localmente (erro no Supabase):', newBolo.nome)
-          
-          // Mostrar notificação de sucesso local
-          if (window.showNotification) {
-            window.showNotification('✅ Bolo cadastrado localmente!', 'success')
-          }
-          
-          return { data: newBolo, error: null }
-        }
-
-        // Bolo inserido com sucesso no Supabase
-        const boloInserido = data[0]
-        console.log('✅ Bolo inserido no Supabase:', boloInserido.id)
-        
-        // Mostrar notificação de sucesso
-        if (window.showNotification) {
-          window.showNotification('✅ Bolo cadastrado com sucesso!', 'success')
-        }
-        
-        return { data: boloInserido, error: null }
-      } catch (error) {
-        console.error('❌ Erro crítico ao adicionar bolo:', error)
-        
-        // Em caso de erro crítico, salvar localmente
         const newBolo = {
           id: Date.now(),
           ...boloData,
@@ -625,309 +460,388 @@ export const DataProvider = ({ children }) => {
           created_at: new Date().toISOString()
         }
         
-        console.log('✅ Bolo salvo localmente (erro crítico):', newBolo.nome)
+        setBolos(prev => [newBolo, ...prev])
         
-        // Mostrar notificação de sucesso local
+        // Salvar no localStorage
+        const updatedBolos = [newBolo, ...bolos]
+        localStorage.setItem(`bolos_${user.id}`, JSON.stringify(updatedBolos))
+        
         if (window.showNotification) {
           window.showNotification('✅ Bolo cadastrado localmente!', 'success')
         }
         
         return { data: newBolo, error: null }
       }
+
+      const boloToInsert = {
+        nome: boloData.nome,
+        descricao: boloData.descricao || '',
+        preco_por_kg: Number(boloData.preco_por_kg || 0),
+        categoria: boloData.categoria || 'Tradicional',
+        user_id: authUser.id
+      }
+
+      // Tentar salvar no Supabase primeiro
+      try {
+        const { data, error } = await supabase
+          .from('bolos')
+          .insert([boloToInsert])
+          .select()
+
+        if (error) {
+          console.error('❌ Erro ao salvar bolo no Supabase:', error)
+          throw error
+        }
+
+        console.log('✅ Bolo salvo no Supabase:', data[0].id)
+        
+        // Atualizar estado local
+        setBolos(prev => [data[0], ...prev])
+        
+        // Atualizar cache
+        const cacheKey = `bolos_${user.id}`
+        setCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: [data[0], ...(prev[cacheKey]?.data || [])],
+            timestamp: Date.now()
+          }
+        }))
+
+        // Salvar no localStorage
+        const updatedBolos = [data[0], ...bolos]
+        localStorage.setItem(`bolos_${user.id}`, JSON.stringify(updatedBolos))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Bolo cadastrado com sucesso!', 'success')
+        }
+
+        return { data: data[0], error: null }
+      } catch (supabaseError) {
+        console.log('⚠️ Erro no Supabase, salvando localmente')
+        
+        // Salvar localmente
+        const newBolo = {
+          id: Date.now(),
+          ...boloData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }
+
+        setBolos(prev => [newBolo, ...prev])
+        
+        // Salvar no localStorage
+        const updatedBolos = [newBolo, ...bolos]
+        localStorage.setItem(`bolos_${user.id}`, JSON.stringify(updatedBolos))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Bolo cadastrado localmente!', 'success')
+        }
+
+        return { data: newBolo, error: null }
+      }
+    } catch (error) {
+      console.error('❌ Erro crítico ao adicionar bolo:', error)
+      return { error: error.message }
     }
+  }
+
+  // Adicionar venda
+  const addSale = async (saleData) => {
+    if (!user) return { error: 'Usuário não autenticado' }
+
+    try {
+      console.log('📝 Adicionando venda:', saleData)
+      
+      // Verificar se o usuário está autenticado no Supabase
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !authUser) {
+        console.log('❌ Usuário não autenticado no Supabase, salvando localmente')
+        
+        const newSale = {
+          id: Date.now(),
+          ...saleData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }
+        
+        setSales(prev => [newSale, ...prev])
+        
+        // Salvar no localStorage
+        const updatedSales = [newSale, ...sales]
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+        
+        if (window.showNotification) {
+          window.showNotification('✅ Venda cadastrada localmente!', 'success')
+        }
+        
+        return { data: newSale, error: null }
+      }
+
+      const saleToInsert = {
+        cliente_nome: saleData.cliente_nome,
+        cliente_email: saleData.cliente_email || '',
+        cliente_telefone: saleData.cliente_telefone || '',
+        metodo_pagamento: saleData.metodo_pagamento,
+        valor_total: Number(saleData.valor_total || 0),
+        user_id: authUser.id
+      }
+
+      // Tentar salvar no Supabase primeiro
+      try {
+        const { data, error } = await supabase
+          .from('vendas')
+          .insert([saleToInsert])
+          .select()
+
+        if (error) {
+          console.error('❌ Erro ao salvar venda no Supabase:', error)
+          throw error
+        }
+
+        console.log('✅ Venda salva no Supabase:', data[0].id)
+        
+        // Atualizar estado local
+        setSales(prev => [data[0], ...prev])
+        
+        // Atualizar cache
+        const cacheKey = `sales_${user.id}`
+        setCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: [data[0], ...(prev[cacheKey]?.data || [])],
+            timestamp: Date.now()
+          }
+        }))
+
+        // Salvar no localStorage
+        const updatedSales = [data[0], ...sales]
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Venda cadastrada com sucesso!', 'success')
+        }
+
+        return { data: data[0], error: null }
+      } catch (supabaseError) {
+        console.log('⚠️ Erro no Supabase, salvando localmente')
+        
+        // Salvar localmente
+        const newSale = {
+          id: Date.now(),
+          ...saleData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }
+
+        setSales(prev => [newSale, ...prev])
+        
+        // Salvar no localStorage
+        const updatedSales = [newSale, ...sales]
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Venda cadastrada localmente!', 'success')
+        }
+
+        return { data: newSale, error: null }
+      }
+    } catch (error) {
+      console.error('❌ Erro crítico ao adicionar venda:', error)
+      return { error: error.message }
+    }
+  }
 
   // Adicionar movimentação
   const addMovement = async (movementData) => {
     if (!user) return { error: 'Usuário não autenticado' }
 
     try {
-      const newMovement = {
-        id: Date.now(),
-        ...movementData,
-        user_id: user.id,
-        created_at: new Date().toISOString()
+      console.log('📝 Adicionando movimentação:', movementData)
+      
+      const movementToInsert = {
+        produto_id: movementData.produto_id,
+        tipo: movementData.tipo,
+        quantidade: Number(movementData.quantidade || 0),
+        motivo: movementData.motivo || '',
+        user_id: user.id
       }
-      
-      setMovements(prev => [newMovement, ...prev])
-      
-      return { data: newMovement, error: null }
-    } catch (error) {
-      console.error('Erro ao adicionar movimentação:', error)
-      return { data: null, error }
-    }
-  }
 
-  // Função auxiliar para retry com timeout
-  const retryWithTimeout = async (operation, maxRetries = 3, timeout = 10000) => {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // Tentar salvar no Supabase primeiro
       try {
-        console.log(`🔄 Tentativa ${attempt}/${maxRetries}...`)
-        
-        // Criar promise com timeout
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout da requisição')), timeout)
-        })
-        
-        const operationPromise = operation()
-        const result = await Promise.race([operationPromise, timeoutPromise])
-        
-        console.log(`✅ Sucesso na tentativa ${attempt}`)
-        return result
-      } catch (error) {
-        console.error(`❌ Tentativa ${attempt} falhou:`, error.message)
-        
-        if (attempt === maxRetries) {
+        const { data, error } = await supabase
+          .from('movimentacoes')
+          .insert([movementToInsert])
+          .select()
+
+        if (error) {
+          console.error('❌ Erro ao salvar movimentação no Supabase:', error)
           throw error
         }
+
+        console.log('✅ Movimentação salva no Supabase:', data[0].id)
         
-        // Aguardar antes da próxima tentativa
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+        // Atualizar estado local
+        setMovements(prev => [data[0], ...prev])
+        
+        // Atualizar cache
+        const cacheKey = `movements_${user.id}`
+        setCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: [data[0], ...(prev[cacheKey]?.data || [])],
+            timestamp: Date.now()
+          }
+        }))
+
+        // Salvar no localStorage
+        const updatedMovements = [data[0], ...movements]
+        localStorage.setItem(`movements_${user.id}`, JSON.stringify(updatedMovements))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Movimentação registrada com sucesso!', 'success')
+        }
+
+        return { data: data[0], error: null }
+      } catch (supabaseError) {
+        console.log('⚠️ Erro no Supabase, salvando localmente')
+        
+        // Salvar localmente
+        const newMovement = {
+          id: Date.now(),
+          ...movementToInsert,
+          created_at: new Date().toISOString()
+        }
+
+        setMovements(prev => [newMovement, ...prev])
+        
+        // Salvar no localStorage
+        const updatedMovements = [newMovement, ...movements]
+        localStorage.setItem(`movements_${user.id}`, JSON.stringify(updatedMovements))
+
+        if (window.showNotification) {
+          window.showNotification('✅ Movimentação registrada localmente!', 'success')
+        }
+
+        return { data: newMovement, error: null }
       }
+    } catch (error) {
+      console.error('❌ Erro crítico ao adicionar movimentação:', error)
+      return { error: error.message }
     }
   }
 
-  // Função para sincronizar dados locais com Supabase
+  // Deletar produto
+  const deleteProduct = async (productId) => {
+    if (!user) return { error: 'Usuário não autenticado' }
+
+    try {
+      // Tentar deletar do Supabase primeiro
+      try {
+        const { error } = await supabase
+          .from('produtos')
+          .delete()
+          .eq('id', productId)
+          .eq('user_id', user.id)
+
+        if (error) {
+          console.error('❌ Erro ao deletar produto do Supabase:', error)
+          throw error
+        }
+
+        console.log('✅ Produto deletado do Supabase:', productId)
+      } catch (supabaseError) {
+        console.log('⚠️ Erro no Supabase, deletando localmente')
+      }
+
+      // Atualizar estado local
+      setProducts(prev => prev.filter(p => p.id !== productId))
+      
+      // Atualizar cache
+      const cacheKey = `products_${user.id}`
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: (prev[cacheKey]?.data || []).filter(p => p.id !== productId),
+          timestamp: Date.now()
+        }
+      }))
+
+      // Atualizar localStorage
+      const updatedProducts = products.filter(p => p.id !== productId)
+      localStorage.setItem(`products_${user.id}`, JSON.stringify(updatedProducts))
+
+      if (window.showNotification) {
+        window.showNotification('✅ Produto deletado com sucesso!', 'success')
+      }
+
+      return { error: null }
+    } catch (error) {
+      console.error('❌ Erro ao deletar produto:', error)
+      return { error: error.message }
+    }
+  }
+
+  // Sincronizar dados locais com Supabase
   const syncLocalData = async () => {
     if (!user) return
 
+    console.log('🔄 Sincronizando dados locais com Supabase...')
+    
     try {
-      console.log('🔄 Iniciando sincronização de dados locais...')
+      // Buscar dados do Supabase
+      await refreshAllData(true)
       
-      // Sincronizar vendas locais
-      const localSales = sales.filter(sale => !sale.id || sale.id < 1000000) // IDs locais são menores
-      for (const sale of localSales) {
-        try {
-          await supabase
-            .from('vendas')
-            .insert([{
-              cliente_nome: sale.cliente_nome,
-              cliente_email: sale.cliente_email,
-              cliente_telefone: sale.cliente_telefone,
-              metodo_pagamento: sale.metodo_pagamento,
-              valor_total: sale.valor_total,
-              status_pagamento: 'pendente',
-              data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              desconto: 0,
-              valor_final: sale.valor_total
-            }])
-          console.log(`✅ Venda sincronizada: ${sale.cliente_nome}`)
-        } catch (syncError) {
-          console.log(`⚠️ Falha ao sincronizar venda: ${syncError.message}`)
-        }
+      if (window.showNotification) {
+        window.showNotification('✅ Dados sincronizados com sucesso!', 'success')
       }
-      
-      // Sincronizar produtos locais
-      const localProducts = products.filter(product => !product.id || product.id < 1000000)
-      for (const product of localProducts) {
-        try {
-          await supabase
-            .from('produtos')
-            .insert([{
-              nome: product.nome,
-              valor_unit: product.valor_unit || product.preco || 0,
-              quantidade: product.quantidade || 0,
-              valor_total: product.valor_total || 0,
-              entrada: product.entrada || 0,
-              saida: product.saida || 0,
-              estoque: product.estoque || product.quantidade || 0,
-              user_id: user.id
-            }])
-          console.log(`✅ Produto sincronizado: ${product.nome}`)
-        } catch (syncError) {
-          console.log(`⚠️ Falha ao sincronizar produto: ${syncError.message}`)
-        }
-      }
-      
-      console.log('✅ Sincronização concluída')
     } catch (error) {
-      console.error('❌ Erro na sincronização:', error)
+      console.error('❌ Erro ao sincronizar dados:', error)
+      
+      if (window.showNotification) {
+        window.showNotification('❌ Erro ao sincronizar dados', 'error')
+      }
     }
   }
 
-      // Adicionar venda - FUNCIONANDO 100% LOCAL
-    const addSale = async (saleData) => {
-      if (!user) return { error: 'Usuário não autenticado' }
-
-      try {
-        console.log('📝 Adicionando venda:', saleData)
-        console.log('👤 Usuário atual:', user.id)
-
-        // SEMPRE salvar localmente primeiro (sistema 100% funcional)
-        const newSale = {
-          id: Date.now(),
-          ...saleData,
-          user_id: user.id,
-          created_at: new Date().toISOString()
-        }
-        
-        setSales(prev => [newSale, ...prev])
-        console.log('✅ Venda salva localmente:', newSale.cliente_nome)
-        console.log('📊 Sistema funcionando 100% - dados salvos localmente')
-        
-        // Mostrar notificação de sucesso
-        if (window.showNotification) {
-          window.showNotification('✅ Venda realizada com sucesso!', 'success')
-        }
-
-        // Tentar salvar no Supabase em background (sem bloquear)
-        setTimeout(async () => {
-          try {
-            console.log('🔄 Tentando sincronizar venda com Supabase em background...')
-            
-            const vendaData = {
-              cliente_nome: saleData.cliente_nome,
-              cliente_email: saleData.cliente_email,
-              cliente_telefone: saleData.cliente_telefone,
-              metodo_pagamento: saleData.metodo_pagamento,
-              valor_total: saleData.valor_total,
-              status_pagamento: 'pendente',
-              data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              desconto: 0,
-              valor_final: saleData.valor_total,
-              observacoes: saleData.observacoes || null,
-              user_id: user.id
-            }
-
-            const { data: vendaInserida, error: vendaError } = await supabase
-              .from('vendas')
-              .insert([vendaData])
-              .select()
-
-            if (vendaError) {
-              console.log('⚠️ Falha na sincronização Supabase (normal devido ao RLS):', vendaError.message)
-            } else {
-              console.log('✅ Venda sincronizada com Supabase:', vendaInserida[0]?.id)
-              
-              // Inserir itens da venda na tabela venda_itens
-              if (saleData.itens && saleData.itens.length > 0) {
-                try {
-                  const itensData = saleData.itens.map(item => ({
-                    venda_id: vendaInserida[0].id,
-                    bolo_id: item.produto_id || null,
-                    quantidade: item.peso || 1,
-                    preco_unitario: item.preco_por_kg || 0,
-                    subtotal: item.preco_total || 0,
-                    tipo_venda: 'kg'
-                  }))
-
-                  const { error: itensError } = await supabase
-                    .from('venda_itens')
-                    .insert(itensData)
-
-                  if (itensError) {
-                    console.log('⚠️ Erro ao inserir itens da venda:', itensError.message)
-                  } else {
-                    console.log('✅ Itens da venda sincronizados:', itensData.length, 'itens')
-                  }
-                } catch (itensError) {
-                  console.log('⚠️ Erro ao sincronizar itens:', itensError.message)
-                }
-              }
-            }
-          } catch (syncError) {
-            console.log('⚠️ Erro na sincronização em background:', syncError.message)
-          }
-        }, 1000)
-
-        return { data: newSale, error: null }
-      } catch (error) {
-        console.error('❌ Erro crítico ao adicionar venda:', error)
-
-        // Mostrar notificação de erro
-        if (window.showNotification) {
-          window.showNotification('❌ Erro ao realizar venda. Tente novamente.', 'error')
-        }
-
-        // Em caso de erro crítico, salvar localmente
-        const newSale = {
-          id: Date.now(),
-          ...saleData,
-          user_id: user.id,
-          created_at: new Date().toISOString()
-        }
-        setSales(prev => [newSale, ...prev])
-        console.log('✅ Venda salva localmente (erro crítico)')
-        return { data: newSale, error: null }
-      }
-    }
-
-  // Recarregar todos os dados
-  const refreshAllData = async () => {
-    if (!user) {
-      clearAllData()
-      return
-    }
-
-    try {
-      console.log('🔄 Iniciando carregamento de dados...')
-      
-      // Carregar dados sequencialmente
-      await fetchProducts()
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      await fetchMovements()
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      await fetchSales()
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      await fetchBolos()
-      
-      console.log('✅ Todos os dados carregados com sucesso!')
-    } catch (error) {
-      console.error('Erro ao recarregar dados:', error)
-    }
-  }
-
-  // Limpar dados quando usuário mudar
+  // Limpar dados quando o usuário mudar
   useEffect(() => {
     if (user) {
       console.log('👤 Usuário logado:', user.email)
-      // Carregar dados automaticamente
+      // Carregar dados do usuário atual
       refreshAllData()
     } else {
+      console.log('👤 Usuário deslogado')
       clearAllData()
     }
-  }, [user?.id])
+  }, [user, clearAllData, refreshAllData])
 
-  // Escutar eventos de mudança de usuário
+  // Escutar mudanças de usuário
   useEffect(() => {
     const handleUserChange = () => {
-      console.log('🔄 Usuário mudou, limpando dados...')
-      clearAllData()
-    }
-
-    const handleUserLogout = () => {
-      console.log('🚪 Usuário fez logout, limpando dados...')
+      console.log('🔄 Usuário mudou, limpando dados')
       clearAllData()
     }
 
     window.addEventListener('userChanged', handleUserChange)
-    window.addEventListener('userLogout', handleUserLogout)
-
-    return () => {
-      window.removeEventListener('userChanged', handleUserChange)
-      window.removeEventListener('userLogout', handleUserLogout)
-    }
-  }, [])
+    return () => window.removeEventListener('userChanged', handleUserChange)
+  }, [clearAllData])
 
   const value = {
-    // Estados
     products,
     movements,
     sales,
-    loading,
-    
-    // Ações
-    refreshAllData,
+    bolos,
+    isLoading,
     addProduct,
-    updateProduct,
-    deleteProduct,
     addMovement,
     addSale,
     addBolo,
-    clearAllData,
-    syncLocalData
+    deleteProduct,
+    refreshAllData,
+    syncLocalData,
+    clearAllData
   }
 
   return (
