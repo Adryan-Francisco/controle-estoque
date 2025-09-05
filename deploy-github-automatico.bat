@@ -24,7 +24,7 @@ if %errorlevel% neq 0 (
     echo ERRO: Nenhum repositório remoto configurado!
     echo.
     echo Para configurar, execute:
-    echo git remote add origin https://github.com/SEU_USUARIO/controle-estoque-vendas.git
+    echo git remote add origin https://github.com/Adryan-Francisco/controle-estoque-vendas.git
     echo.
     echo Substitua SEU_USUARIO pelo seu username do GitHub
     echo.
