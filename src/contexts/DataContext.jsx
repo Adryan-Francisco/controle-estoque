@@ -286,7 +286,9 @@ export const DataProvider = ({ children }) => {
           const { data, error } = await supabase
             .from('vendas')
             .select('*')
-            .limit(3)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(10)
 
           if (!error && data) {
             console.log('✅ Vendas carregadas:', data.length, 'itens')
@@ -300,6 +302,49 @@ export const DataProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Erro crítico:', error)
       setSales(mockSales)
+    }
+  }
+
+  // Buscar bolos do usuário atual
+  const fetchBolos = async () => {
+    if (!user) {
+      return
+    }
+
+    try {
+      console.log('🔄 Buscando bolos...')
+      
+      // Verificar se já temos dados recentes (evitar requisições desnecessárias)
+      const now = Date.now()
+      const lastFetch = localStorage.getItem('lastBolosFetch')
+      if (lastFetch && (now - parseInt(lastFetch)) < 30000) { // 30 segundos
+        console.log('⏭️ Pulando busca de bolos - dados recentes')
+        return
+      }
+
+      const { data, error } = await Promise.race([
+        supabase
+          .from('bolos')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 8000)
+        )
+      ])
+
+      if (error) {
+        console.log('⚠️ Erro ao buscar bolos:', error.message)
+      } else {
+        console.log('✅ Bolos carregados:', data?.length || 0, 'itens')
+        // Atualizar localStorage com bolos do Supabase
+        if (data && data.length > 0) {
+          localStorage.setItem('bolos', JSON.stringify(data))
+          localStorage.setItem('lastBolosFetch', now.toString())
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Erro na busca de bolos:', error.message)
     }
   }
 
@@ -457,6 +502,7 @@ export const DataProvider = ({ children }) => {
           preco_por_kg: Number(boloData.preco_por_kg || 0),
           categoria: boloData.categoria || 'Tradicional',
           disponivel: true,
+          user_id: user.id, // Adicionar user_id para isolamento por usuário
           created_at: new Date().toISOString()
         }
         
@@ -472,7 +518,9 @@ export const DataProvider = ({ children }) => {
               nome: boloData.nome,
               descricao: boloData.descricao || '',
               preco_por_kg: Number(boloData.preco_por_kg || 0),
-              categoria: boloData.categoria || 'Tradicional'
+              categoria: boloData.categoria || 'Tradicional',
+              disponivel: true,
+              user_id: user.id
             }
             
             const { data, error } = await supabase
@@ -640,18 +688,45 @@ export const DataProvider = ({ children }) => {
               data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
               desconto: 0,
               valor_final: saleData.valor_total,
-              observacoes: saleData.observacoes || null
+              observacoes: saleData.observacoes || null,
+              user_id: user.id
             }
 
-            const { data, error } = await supabase
+            const { data: vendaInserida, error: vendaError } = await supabase
               .from('vendas')
               .insert([vendaData])
               .select()
 
-            if (error) {
-              console.log('⚠️ Falha na sincronização Supabase (normal devido ao RLS):', error.message)
+            if (vendaError) {
+              console.log('⚠️ Falha na sincronização Supabase (normal devido ao RLS):', vendaError.message)
             } else {
-              console.log('✅ Venda sincronizada com Supabase:', data[0]?.id)
+              console.log('✅ Venda sincronizada com Supabase:', vendaInserida[0]?.id)
+              
+              // Inserir itens da venda na tabela venda_itens
+              if (saleData.itens && saleData.itens.length > 0) {
+                try {
+                  const itensData = saleData.itens.map(item => ({
+                    venda_id: vendaInserida[0].id,
+                    bolo_id: item.produto_id || null,
+                    quantidade: item.peso || 1,
+                    preco_unitario: item.preco_por_kg || 0,
+                    subtotal: item.preco_total || 0,
+                    tipo_venda: 'kg'
+                  }))
+
+                  const { error: itensError } = await supabase
+                    .from('venda_itens')
+                    .insert(itensData)
+
+                  if (itensError) {
+                    console.log('⚠️ Erro ao inserir itens da venda:', itensError.message)
+                  } else {
+                    console.log('✅ Itens da venda sincronizados:', itensData.length, 'itens')
+                  }
+                } catch (itensError) {
+                  console.log('⚠️ Erro ao sincronizar itens:', itensError.message)
+                }
+              }
             }
           } catch (syncError) {
             console.log('⚠️ Erro na sincronização em background:', syncError.message)
@@ -693,6 +768,9 @@ export const DataProvider = ({ children }) => {
       await new Promise(resolve => setTimeout(resolve, 500))
       
       await fetchSales()
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      await fetchBolos()
       
       console.log('✅ Todos os dados carregados com sucesso!')
     } catch (error) {
