@@ -16,7 +16,7 @@ const Dashboard = ({ onNavigateToProducts }) => {
   const [testProduct, setTestProduct] = useState(null)
   const [editingProduct, setEditingProduct] = useState(null)
   const { user } = useAuth()
-  const { products, loading, addProduct, updateProduct, deleteProduct, refreshAllData } = useData()
+  const { products, loading, addProduct, updateProduct, deleteProduct, refreshAllData, syncLocalData } = useData()
 
   useEffect(() => {
     // Não precisa chamar refreshAllData aqui pois o DataContext já faz isso automaticamente
@@ -490,13 +490,45 @@ const Dashboard = ({ onNavigateToProducts }) => {
         />
       )}
 
-      {/* Botão de Teste do Supabase */}
+      {/* Botões de Teste e Sincronização */}
       <div style={{
         position: 'fixed',
         bottom: '20px',
         right: '20px',
-        zIndex: 1000
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
       }}>
+        <button
+          onClick={syncLocalData}
+          style={{
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50px',
+            padding: '1rem',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-2px)'
+            e.target.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)'
+            e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'
+          }}
+        >
+          🔄 Sincronizar
+        </button>
+        
         <button
           onClick={() => setShowSupabaseTest(true)}
           style={{

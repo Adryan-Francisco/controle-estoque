@@ -103,23 +103,32 @@ const SupabaseTest = () => {
           valor_final: 50.00
         }
 
-        const { data: saleData, error: saleError } = await supabase
-          .from('vendas')
-          .insert([testSale])
-          .select()
-
-        if (saleError) {
-          addTestResult(`❌ Erro ao inserir venda: ${saleError.message}`, 'error')
-          addTestResult(`❌ Código do erro: ${saleError.code}`, 'error')
-        } else {
-          addTestResult(`✅ Venda inserida com sucesso! ID: ${saleData[0]?.id}`, 'success')
-          
-          // Deletar a venda de teste
-          await supabase
+        try {
+          const { data: saleData, error: saleError } = await supabase
             .from('vendas')
-            .delete()
-            .eq('id', saleData[0].id)
-          addTestResult('🗑️ Venda de teste removida', 'info')
+            .insert([testSale])
+            .select()
+
+          if (saleError) {
+            addTestResult(`❌ Erro ao inserir venda: ${saleError.message}`, 'error')
+            addTestResult(`❌ Código do erro: ${saleError.code}`, 'error')
+            
+            if (saleError.code === '42501') {
+              addTestResult('🔒 Erro de Row Level Security (RLS) detectado', 'error')
+              addTestResult('💡 Solução: Desative RLS na tabela vendas no Supabase', 'info')
+            }
+          } else {
+            addTestResult(`✅ Venda inserida com sucesso! ID: ${saleData[0]?.id}`, 'success')
+            
+            // Deletar a venda de teste
+            await supabase
+              .from('vendas')
+              .delete()
+              .eq('id', saleData[0].id)
+            addTestResult('🗑️ Venda de teste removida', 'info')
+          }
+        } catch (networkError) {
+          addTestResult(`❌ Erro de rede: ${networkError.message}`, 'error')
         }
       }
 

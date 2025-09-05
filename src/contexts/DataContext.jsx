@@ -520,6 +520,64 @@ export const DataProvider = ({ children }) => {
     }
   }
 
+  // Função para sincronizar dados locais com Supabase
+  const syncLocalData = async () => {
+    if (!user) return
+
+    try {
+      console.log('🔄 Iniciando sincronização de dados locais...')
+      
+      // Sincronizar vendas locais
+      const localSales = sales.filter(sale => !sale.id || sale.id < 1000000) // IDs locais são menores
+      for (const sale of localSales) {
+        try {
+          await supabase
+            .from('vendas')
+            .insert([{
+              cliente_nome: sale.cliente_nome,
+              cliente_email: sale.cliente_email,
+              cliente_telefone: sale.cliente_telefone,
+              metodo_pagamento: sale.metodo_pagamento,
+              valor_total: sale.valor_total,
+              status_pagamento: 'pendente',
+              data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              desconto: 0,
+              valor_final: sale.valor_total
+            }])
+          console.log(`✅ Venda sincronizada: ${sale.cliente_nome}`)
+        } catch (syncError) {
+          console.log(`⚠️ Falha ao sincronizar venda: ${syncError.message}`)
+        }
+      }
+      
+      // Sincronizar produtos locais
+      const localProducts = products.filter(product => !product.id || product.id < 1000000)
+      for (const product of localProducts) {
+        try {
+          await supabase
+            .from('produtos')
+            .insert([{
+              nome: product.nome,
+              valor_unit: product.valor_unit || product.preco || 0,
+              quantidade: product.quantidade || 0,
+              valor_total: product.valor_total || 0,
+              entrada: product.entrada || 0,
+              saida: product.saida || 0,
+              estoque: product.estoque || product.quantidade || 0,
+              user_id: user.id
+            }])
+          console.log(`✅ Produto sincronizado: ${product.nome}`)
+        } catch (syncError) {
+          console.log(`⚠️ Falha ao sincronizar produto: ${syncError.message}`)
+        }
+      }
+      
+      console.log('✅ Sincronização concluída')
+    } catch (error) {
+      console.error('❌ Erro na sincronização:', error)
+    }
+  }
+
   // Adicionar venda
   const addSale = async (saleData) => {
     if (!user) return { error: 'Usuário não autenticado' }
@@ -731,7 +789,8 @@ export const DataProvider = ({ children }) => {
     deleteProduct,
     addMovement,
     addSale,
-    clearAllData
+    clearAllData,
+    syncLocalData
   }
 
   return (
