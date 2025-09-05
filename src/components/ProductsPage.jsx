@@ -223,7 +223,7 @@ const ProductsPage = ({ onBack }) => {
             </button>
 
             <button
-              onClick={fetchProducts}
+              onClick={refreshAllData}
               disabled={refreshing}
               style={{
                 display: 'flex',

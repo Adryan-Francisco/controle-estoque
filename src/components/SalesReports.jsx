@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useData } from '../contexts/DataContext'
 import { 
   BarChart3, 
   TrendingUp, 
@@ -53,11 +53,15 @@ const SalesReports = ({ onBack }) => {
   const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false)
   const [comparisonPeriod, setComparisonPeriod] = useState('previous') // previous, last_year, custom
 
+  const { sales, loading, refreshAllData } = useData()
+
   useEffect(() => {
-    fetchSales()
+    if (sales.length === 0) {
+      refreshAllData()
+    }
   }, [dateFilter, startDate, endDate])
 
-  const fetchSales = async () => {
+  // Função removida - usando DataContext
     try {
       setRefreshing(true)
       
@@ -523,7 +527,7 @@ const SalesReports = ({ onBack }) => {
               </button>
               
               <button
-                onClick={fetchSales}
+                onClick={refreshAllData}
                 disabled={refreshing}
                 style={{
                   padding: '0.75rem 1rem',

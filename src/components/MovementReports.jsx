@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useData } from '../contexts/DataContext'
 import { 
   FileText, 
   Download, 
@@ -37,8 +37,12 @@ const MovementReports = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState('table') // table, grid
 
+  const { movements, loading, refreshAllData } = useData()
+
   useEffect(() => {
-    fetchMovements()
+    if (movements.length === 0) {
+      refreshAllData()
+    }
   }, [dateFilter, typeFilter])
 
   const filteredAndSortedMovements = movements
@@ -102,7 +106,7 @@ const MovementReports = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchMovements()
+    await refreshAllData()
     setRefreshing(false)
   }
 

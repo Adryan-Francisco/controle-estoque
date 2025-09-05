@@ -394,9 +394,7 @@ export const DataProvider = ({ children }) => {
     loading,
     
     // Ações
-    fetchProducts,
-    fetchMovements,
-    fetchSales,
+    refreshAllData,
     addProduct,
     updateProduct,
     deleteProduct,
