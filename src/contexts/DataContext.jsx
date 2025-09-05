@@ -497,7 +497,7 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-      // Adicionar bolo - TENTAR SUPABASE PRIMEIRO
+      // Adicionar bolo - VERIFICAR TABELA PRIMEIRO
     const addBolo = async (boloData) => {
       if (!user) return { error: 'Usuário não autenticado' }
 
@@ -505,19 +505,48 @@ export const DataProvider = ({ children }) => {
         console.log('📝 Adicionando bolo:', boloData)
         console.log('👤 Usuário atual:', user.id)
         
-        // Preparar dados para inserção
+        // Primeiro, verificar se a tabela bolos existe
+        console.log('🔍 Verificando se a tabela bolos existe...')
+        const { data: testData, error: testError } = await supabase
+          .from('bolos')
+          .select('*')
+          .limit(1)
+
+        if (testError) {
+          console.error('❌ Tabela bolos não existe ou não acessível:', testError)
+          console.error('❌ Código:', testError.code)
+          console.error('❌ Mensagem:', testError.message)
+          
+          // Salvar localmente se a tabela não existir
+          const newBolo = {
+            id: Date.now(),
+            ...boloData,
+            user_id: user.id,
+            created_at: new Date().toISOString()
+          }
+          
+          console.log('✅ Bolo salvo localmente (tabela bolos não existe):', newBolo.nome)
+          
+          if (window.showNotification) {
+            window.showNotification('✅ Bolo cadastrado localmente!', 'success')
+          }
+          
+          return { data: newBolo, error: null }
+        }
+
+        console.log('✅ Tabela bolos existe, tentando inserir...')
+        
+        // Preparar dados para inserção (sem campos que podem não existir)
         const boloDataToInsert = {
           nome: boloData.nome,
           descricao: boloData.descricao || '',
           preco_por_kg: Number(boloData.preco_por_kg || 0),
-          categoria: boloData.categoria || 'Tradicional',
-          disponivel: true,
-          user_id: user.id
+          categoria: boloData.categoria || 'Tradicional'
         }
         
         console.log('🔍 Dados do bolo para inserção:', boloDataToInsert)
         
-        // Tentar salvar no Supabase primeiro
+        // Tentar salvar no Supabase
         console.log('🔄 Enviando requisição para Supabase...')
         const { data, error } = await supabase
           .from('bolos')

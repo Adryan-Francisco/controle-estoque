@@ -192,43 +192,71 @@ const SupabaseTest = () => {
           if (bolosSelectError) {
             addTestResult(`❌ Erro no SELECT bolos: ${bolosSelectError.message}`, 'error')
             addTestResult(`❌ Código: ${bolosSelectError.code}`, 'error')
+            
+            if (bolosSelectError.code === 'PGRST116') {
+              addTestResult('❌ Tabela bolos não existe no Supabase!', 'error')
+              addTestResult('💡 Solução: Crie a tabela bolos no Supabase Dashboard', 'info')
+              addTestResult('📋 SQL para criar tabela:', 'info')
+              addTestResult(`CREATE TABLE bolos (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                nome VARCHAR NOT NULL,
+                descricao TEXT,
+                preco_por_kg DECIMAL(10,2),
+                categoria VARCHAR DEFAULT 'Tradicional',
+                disponivel BOOLEAN DEFAULT true,
+                user_id UUID REFERENCES auth.users(id),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );`, 'info')
+            }
           } else {
             addTestResult('✅ SELECT bolos funcionando', 'success')
           }
 
-          // Testar INSERT na tabela bolos
-          addTestResult('🔍 Testando INSERT na tabela bolos...', 'info')
-          const testBolo = {
-            nome: 'Bolo Teste',
-            descricao: 'Teste de inserção',
-            preco_por_kg: 25.00,
-            categoria: 'Tradicional',
-            disponivel: true,
-            user_id: currentUser.id
-          }
-
-          const { data: boloInsert, error: boloInsertError } = await supabase
-            .from('bolos')
-            .insert([testBolo])
-            .select()
-
-          if (boloInsertError) {
-            addTestResult(`❌ Erro no INSERT bolos: ${boloInsertError.message}`, 'error')
-            addTestResult(`❌ Código: ${boloInsertError.code}`, 'error')
+          // Testar INSERT na tabela bolos (apenas se SELECT funcionou)
+          if (!bolosSelectError) {
+            addTestResult('🔍 Testando INSERT na tabela bolos...', 'info')
             
-            if (boloInsertError.code === '42501') {
-              addTestResult('🔒 Erro de RLS na tabela bolos', 'error')
-              addTestResult('💡 Solução: Configure políticas RLS para a tabela bolos', 'info')
+            // Testar com dados mínimos primeiro
+            const testBoloMinimal = {
+              nome: 'Bolo Teste',
+              descricao: 'Teste de inserção',
+              preco_por_kg: 25.00,
+              categoria: 'Tradicional'
             }
-          } else {
-            addTestResult(`✅ INSERT bolos funcionando! ID: ${boloInsert[0]?.id}`, 'success')
-            
-            // Deletar o bolo de teste
-            await supabase
+
+            const { data: boloInsert, error: boloInsertError } = await supabase
               .from('bolos')
-              .delete()
-              .eq('id', boloInsert[0].id)
-            addTestResult('🗑️ Bolo de teste removido', 'info')
+              .insert([testBoloMinimal])
+              .select()
+
+            if (boloInsertError) {
+              addTestResult(`❌ Erro no INSERT bolos: ${boloInsertError.message}`, 'error')
+              addTestResult(`❌ Código: ${boloInsertError.code}`, 'error')
+              
+              if (boloInsertError.code === '42501') {
+                addTestResult('🔒 Erro de RLS na tabela bolos', 'error')
+                addTestResult('💡 Solução: Configure políticas RLS para a tabela bolos', 'info')
+                addTestResult('📋 SQL para RLS:', 'info')
+                addTestResult(`ALTER TABLE bolos ENABLE ROW LEVEL SECURITY;
+                CREATE POLICY "Users can insert their own bolos" ON bolos
+                  FOR INSERT WITH CHECK (auth.uid() = user_id);
+                CREATE POLICY "Users can view their own bolos" ON bolos
+                  FOR SELECT USING (auth.uid() = user_id);`, 'info')
+              } else if (boloInsertError.code === 'PGRST204') {
+                addTestResult('❌ Erro de schema - coluna não encontrada', 'error')
+                addTestResult('💡 Verifique se as colunas existem na tabela bolos', 'info')
+              }
+            } else {
+              addTestResult(`✅ INSERT bolos funcionando! ID: ${boloInsert[0]?.id}`, 'success')
+              
+              // Deletar o bolo de teste
+              await supabase
+                .from('bolos')
+                .delete()
+                .eq('id', boloInsert[0].id)
+              addTestResult('🗑️ Bolo de teste removido', 'info')
+            }
           }
         } catch (bolosTestError) {
           addTestResult(`❌ Erro no teste bolos: ${bolosTestError.message}`, 'error')
