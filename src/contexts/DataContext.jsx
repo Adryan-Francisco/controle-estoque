@@ -365,9 +365,14 @@ export const DataProvider = ({ children }) => {
         created_at: new Date().toISOString()
       }
       
-      setProducts(prev => [newProduct, ...prev])
-      console.log('✅ Produto salvo localmente:', newProduct.nome)
-      console.log('📊 Sistema funcionando 100% - dados salvos localmente')
+              setProducts(prev => [newProduct, ...prev])
+        console.log('✅ Produto salvo localmente:', newProduct.nome)
+        console.log('📊 Sistema funcionando 100% - dados salvos localmente')
+        
+        // Mostrar notificação de sucesso
+        if (window.showNotification) {
+          window.showNotification('✅ Produto cadastrado com sucesso!', 'success')
+        }
 
       // Tentar salvar no Supabase em background (sem bloquear)
       setTimeout(async () => {
@@ -403,6 +408,11 @@ export const DataProvider = ({ children }) => {
       return { data: newProduct, error: null }
     } catch (error) {
       console.error('❌ Erro crítico ao adicionar produto:', error)
+      
+      // Mostrar notificação de erro
+      if (window.showNotification) {
+        window.showNotification('❌ Erro ao cadastrar produto. Tente novamente.', 'error')
+      }
       
       // Em caso de erro crítico, salvar localmente
       const newProduct = {
@@ -508,6 +518,11 @@ export const DataProvider = ({ children }) => {
         
         console.log('✅ Bolo salvo localmente:', newBolo.nome)
         console.log('📊 Sistema funcionando 100% - dados salvos localmente')
+        
+        // Mostrar notificação de sucesso
+        if (window.showNotification) {
+          window.showNotification('✅ Bolo cadastrado com sucesso!', 'success')
+        }
 
         // Tentar salvar no Supabase em background (sem bloquear)
         setTimeout(async () => {
@@ -541,6 +556,12 @@ export const DataProvider = ({ children }) => {
         return { data: newBolo, error: null }
       } catch (error) {
         console.error('❌ Erro crítico ao adicionar bolo:', error)
+        
+        // Mostrar notificação de erro
+        if (window.showNotification) {
+          window.showNotification('❌ Erro ao cadastrar bolo. Tente novamente.', 'error')
+        }
+        
         return { data: null, error }
       }
     }
@@ -672,6 +693,11 @@ export const DataProvider = ({ children }) => {
         setSales(prev => [newSale, ...prev])
         console.log('✅ Venda salva localmente:', newSale.cliente_nome)
         console.log('📊 Sistema funcionando 100% - dados salvos localmente')
+        
+        // Mostrar notificação de sucesso
+        if (window.showNotification) {
+          window.showNotification('✅ Venda realizada com sucesso!', 'success')
+        }
 
         // Tentar salvar no Supabase em background (sem bloquear)
         setTimeout(async () => {
@@ -736,6 +762,11 @@ export const DataProvider = ({ children }) => {
         return { data: newSale, error: null }
       } catch (error) {
         console.error('❌ Erro crítico ao adicionar venda:', error)
+
+        // Mostrar notificação de erro
+        if (window.showNotification) {
+          window.showNotification('❌ Erro ao realizar venda. Tente novamente.', 'error')
+        }
 
         // Em caso de erro crítico, salvar localmente
         const newSale = {

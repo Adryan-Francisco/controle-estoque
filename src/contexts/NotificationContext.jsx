@@ -200,6 +200,35 @@ export const NotificationProvider = ({ children }) => {
     }
   }
 
+  // Função para mostrar notificações de sucesso/erro
+  const showNotification = (message, type = 'info') => {
+    const id = Date.now()
+    const notification = {
+      id,
+      title: type === 'success' ? 'Sucesso' : type === 'error' ? 'Erro' : 'Informação',
+      message,
+      time: 'Agora',
+      type,
+      read: false,
+      data: { tipo: 'sistema' }
+    }
+    
+    setNotifications(prev => [notification, ...prev])
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      removeNotification(id)
+    }, 5000)
+  }
+
+  // Expor função globalmente para uso em outros contextos
+  useEffect(() => {
+    window.showNotification = showNotification
+    return () => {
+      delete window.showNotification
+    }
+  }, [])
+
   // Buscar notificações quando o usuário mudar
   useEffect(() => {
     if (user) {
@@ -227,7 +256,8 @@ export const NotificationProvider = ({ children }) => {
     markAsRead,
     markAllAsRead,
     removeNotification,
-    executeAction
+    executeAction,
+    showNotification
   }
 
   return (
