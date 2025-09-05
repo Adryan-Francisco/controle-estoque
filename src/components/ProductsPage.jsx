@@ -74,7 +74,7 @@ const ProductsPage = ({ onBack }) => {
   })
 
   // Produtos com estoque baixo
-  const lowStockProducts = filteredProducts.filter(product => (product.quantidade || 0) <= 5)
+  const lowStockProducts = filteredProducts.filter(product => (product.estoque || 0) <= 5)
 
   // Formatar valor
   const formatCurrency = (value) => {
@@ -209,7 +209,7 @@ const ProductsPage = ({ onBack }) => {
         }}>
           <TrendingUp size={24} style={{ marginBottom: '0.5rem' }} />
           <div style={{ fontSize: '2rem', fontWeight: '700' }}>
-            {products.reduce((sum, product) => sum + (product.quantidade || 0), 0)}
+            {products.reduce((sum, product) => sum + (product.estoque || 0), 0)}
           </div>
           <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
             Total em Estoque
@@ -413,7 +413,7 @@ const ProductsPage = ({ onBack }) => {
                 border: '1px solid #e2e8f0',
                 borderRadius: '8px',
                 padding: '1rem',
-                background: (product.quantidade || 0) <= 5 ? '#fef2f2' : '#f8fafc'
+                background: (product.estoque || 0) <= 5 ? '#fef2f2' : '#f8fafc'
               }}>
                 <div style={{
                   display: 'flex',
@@ -434,7 +434,7 @@ const ProductsPage = ({ onBack }) => {
                       }}>
                         {product.nome}
                       </h3>
-                      {(product.quantidade || 0) <= 5 && (
+                      {(product.estoque || 0) <= 5 && (
                         <AlertTriangle size={16} style={{ color: '#ef4444' }} />
                       )}
                     </div>
@@ -459,14 +459,14 @@ const ProductsPage = ({ onBack }) => {
                           fontSize: '0.9rem',
                           color: '#64748b'
                         }}>
-                          Preço Unitário: 
+                          Preço: 
                         </span>
                         <span style={{
                           fontSize: '1rem',
                           fontWeight: '600',
                           color: '#059669'
                         }}>
-                          {formatCurrency(product.valor_unit || 0)}
+                          {formatCurrency(product.preco || product.valor_unit || 0)}
                         </span>
                       </div>
                       
@@ -475,30 +475,14 @@ const ProductsPage = ({ onBack }) => {
                           fontSize: '0.9rem',
                           color: '#64748b'
                         }}>
-                          Quantidade: 
+                          Estoque: 
                         </span>
                         <span style={{
                           fontSize: '1rem',
                           fontWeight: '600',
-                          color: '#1e293b'
+                          color: (product.estoque || 0) <= 5 ? '#ef4444' : '#1e293b'
                         }}>
-                          {product.quantidade || 0}
-                        </span>
-                      </div>
-                      
-                      <div>
-                        <span style={{
-                          fontSize: '0.9rem',
-                          color: '#64748b'
-                        }}>
-                          Valor Total: 
-                        </span>
-                        <span style={{
-                          fontSize: '1rem',
-                          fontWeight: '600',
-                          color: '#3b82f6'
-                        }}>
-                          {formatCurrency(product.valor_total || 0)}
+                          {product.estoque || 0} unidades
                         </span>
                       </div>
                     </div>
@@ -606,8 +590,8 @@ const ProductForm = ({ product, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     nome: product?.nome || '',
     descricao: product?.descricao || '',
-    valor_unit: product?.valor_unit || '',
-    quantidade: product?.quantidade || ''
+    preco: product?.preco || product?.valor_unit || '',
+    estoque: product?.estoque || ''
   })
 
   const handleSubmit = (e) => {
@@ -618,24 +602,12 @@ const ProductForm = ({ product, onSave, onCancel }) => {
       return
     }
 
-    if (!formData.valor_unit || formData.valor_unit <= 0) {
-      alert('Preço unitário deve ser maior que zero.')
+    if (!formData.preco || formData.preco <= 0) {
+      alert('Preço deve ser maior que zero.')
       return
     }
 
-    if (!formData.quantidade || formData.quantidade <= 0) {
-      alert('Quantidade deve ser maior que zero.')
-      return
-    }
-
-    // Calcular valor total
-    const valor_total = formData.valor_unit * formData.quantidade
-    const productData = {
-      ...formData,
-      valor_total
-    }
-
-    onSave(productData)
+    onSave(formData)
   }
 
   return (
@@ -701,13 +673,13 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           color: '#374151',
           marginBottom: '0.5rem'
         }}>
-          Preço Unitário *
+          Preço por Unidade *
         </label>
         <input
           type="number"
           step="0.01"
-          value={formData.valor_unit}
-          onChange={(e) => setFormData({...formData, valor_unit: parseFloat(e.target.value) || 0})}
+          value={formData.preco}
+          onChange={(e) => setFormData({...formData, preco: parseFloat(e.target.value) || 0})}
           placeholder="0.00"
           style={{
             width: '100%',
@@ -728,14 +700,13 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           color: '#374151',
           marginBottom: '0.5rem'
         }}>
-          Quantidade *
+          Quantidade em Estoque
         </label>
         <input
           type="number"
-          step="0.01"
-          value={formData.quantidade}
-          onChange={(e) => setFormData({...formData, quantidade: parseFloat(e.target.value) || 0})}
-          placeholder="0.00"
+          value={formData.estoque}
+          onChange={(e) => setFormData({...formData, estoque: parseInt(e.target.value) || 0})}
+          placeholder="0"
           style={{
             width: '100%',
             padding: '0.75rem',
