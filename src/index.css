@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Design System Moderno - Sistema de Controle de Estoque */
 
 :root {
