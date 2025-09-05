@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
-import { ArrowLeft, Calendar, DollarSign, CreditCard, User, Phone, Mail, Edit, Trash2, Save, X } from 'lucide-react'
+import { ArrowLeft, Calendar, DollarSign, CreditCard, User, Phone, Mail, Edit, Trash2, Save, X, ShoppingCart, TrendingUp, Package } from 'lucide-react'
 
 const SalesHistory = ({ onBack }) => {
   const { sales, isLoading, refreshAllData, updateSale, deleteSale } = useData()
