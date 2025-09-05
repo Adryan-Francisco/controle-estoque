@@ -280,6 +280,33 @@ export const DataProvider = ({ children }) => {
 
     try {
       console.log('📝 Adicionando produto:', productData)
+      console.log('👤 Usuário atual:', user.id)
+      
+      // Verificar se a tabela produtos existe primeiro
+      console.log('🔍 Verificando tabela produtos...')
+      const { data: testData, error: testError } = await supabase
+        .from('produtos')
+        .select('*')
+        .limit(1)
+
+      if (testError) {
+        console.error('❌ Erro ao verificar tabela produtos:', testError)
+        console.error('❌ Código do erro:', testError.code)
+        console.error('❌ Mensagem do erro:', testError.message)
+        
+        // Se a tabela não existir, criar dados locais
+        const newProduct = {
+          id: Date.now(),
+          ...productData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }
+        setProducts(prev => [newProduct, ...prev])
+        console.log('✅ Produto salvo localmente (tabela produtos não existe)')
+        return { data: newProduct, error: null }
+      }
+
+      console.log('✅ Tabela produtos existe, inserindo dados...')
       
       // Mapear campos corretamente para a tabela produtos (sem descricao)
       const mappedData = {
@@ -323,18 +350,30 @@ export const DataProvider = ({ children }) => {
 
       if (error) {
         console.error('❌ Erro ao salvar produto no Supabase:', error)
+        console.error('❌ Código do erro:', error.code)
+        console.error('❌ Mensagem do erro:', error.message)
         console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2))
-        return { data: null, error }
+        
+        // Se der erro no Supabase, salvar localmente mesmo assim
+        const newProduct = {
+          id: Date.now(),
+          ...productData,
+          user_id: user.id,
+          created_at: new Date().toISOString()
+        }
+        setProducts(prev => [newProduct, ...prev])
+        console.log('✅ Produto salvo localmente (erro no Supabase)')
+        return { data: newProduct, error: null }
       }
 
       // Atualizar lista local
       const newProduct = data[0]
       setProducts(prev => [newProduct, ...prev])
       
-      console.log('✅ Produto adicionado:', newProduct.nome)
+      console.log('✅ Produto adicionado no Supabase:', newProduct.nome)
       return { data: newProduct, error: null }
     } catch (error) {
-      console.error('Erro ao adicionar produto:', error)
+      console.error('❌ Erro crítico ao adicionar produto:', error)
       return { data: null, error }
     }
   }

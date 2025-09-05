@@ -5,12 +5,14 @@ import ProductForm from './ProductForm'
 import StatCard from './StatCard'
 import MovementReports from './MovementReports'
 import SimpleStockMovement from './SimpleStockMovement'
+import SupabaseTest from './SupabaseTest'
 import { Package, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Settings, ArrowRight } from 'lucide-react'
 
 const Dashboard = ({ onNavigateToProducts }) => {
   const [showForm, setShowForm] = useState(false)
   const [showStockMovement, setShowStockMovement] = useState(false)
   const [showProductSelector, setShowProductSelector] = useState(false)
+  const [showSupabaseTest, setShowSupabaseTest] = useState(false)
   const [testProduct, setTestProduct] = useState(null)
   const [editingProduct, setEditingProduct] = useState(null)
   const { user } = useAuth()
@@ -486,6 +488,95 @@ const Dashboard = ({ onNavigateToProducts }) => {
             // Não precisa chamar fetchProducts pois o DataContext já atualiza automaticamente
           }}
         />
+      )}
+
+      {/* Botão de Teste do Supabase */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        zIndex: 1000
+      }}>
+        <button
+          onClick={() => setShowSupabaseTest(true)}
+          style={{
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50px',
+            padding: '1rem',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-2px)'
+            e.target.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)'
+            e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'
+          }}
+        >
+          🔧 Teste Supabase
+        </button>
+      </div>
+
+      {/* Modal de Teste do Supabase */}
+      {showSupabaseTest && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '900px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowSupabaseTest(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              ×
+            </button>
+            <SupabaseTest />
+          </div>
+        </div>
       )}
     </div>
   )
