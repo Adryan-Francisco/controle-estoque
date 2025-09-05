@@ -11,12 +11,14 @@ import {
   User,
   Phone,
   Mail,
-  CreditCard
+  CreditCard,
+  Cake,
+  Scale
 } from 'lucide-react'
 
 const SalesControl = () => {
   const { user } = useAuth()
-  const { products, sales, loading, addSale, refreshAllData } = useData()
+  const { sales, loading, addSale, refreshAllData } = useData()
   const [cart, setCart] = useState([])
   const [saleData, setSaleData] = useState({
     cliente_nome: '',
@@ -26,41 +28,101 @@ const SalesControl = () => {
     observacoes: ''
   })
 
+  // Cardápio de bolos com preços por kg
+  const bolosCardapio = [
+    {
+      id: 1,
+      nome: 'Bolo de Chocolate',
+      descricao: 'Delicioso bolo de chocolate com cobertura de ganache',
+      preco_por_kg: 28.00,
+      categoria: 'Chocolate',
+      disponivel: true
+    },
+    {
+      id: 2,
+      nome: 'Bolo de Morango',
+      descricao: 'Bolo de morango com creme e frutas frescas',
+      preco_por_kg: 32.00,
+      categoria: 'Frutas',
+      disponivel: true
+    },
+    {
+      id: 3,
+      nome: 'Bolo de Cenoura',
+      descricao: 'Bolo de cenoura com cobertura de chocolate',
+      preco_por_kg: 26.00,
+      categoria: 'Tradicional',
+      disponivel: true
+    },
+    {
+      id: 4,
+      nome: 'Bolo de Limão',
+      descricao: 'Bolo de limão com glacê de limão siciliano',
+      preco_por_kg: 30.00,
+      categoria: 'Cítrico',
+      disponivel: true
+    },
+    {
+      id: 5,
+      nome: 'Bolo de Red Velvet',
+      descricao: 'Bolo vermelho com cream cheese e frutas vermelhas',
+      preco_por_kg: 35.00,
+      categoria: 'Especial',
+      disponivel: true
+    },
+    {
+      id: 6,
+      nome: 'Bolo de Coco',
+      descricao: 'Bolo de coco com leite condensado e coco ralado',
+      preco_por_kg: 24.00,
+      categoria: 'Tradicional',
+      disponivel: true
+    }
+  ]
+
   useEffect(() => {
     // Carregar dados se não tiver
-    if (products.length === 0) {
+    if (sales.length === 0) {
       refreshAllData()
     }
   }, [])
 
-  // Adicionar produto ao carrinho
-  const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id)
+  // Adicionar bolo ao carrinho
+  const addToCart = (bolo) => {
+    const existingItem = cart.find(item => item.id === bolo.id)
     
     if (existingItem) {
       setCart(cart.map(item => 
-        item.id === product.id 
-          ? { ...item, quantity: item.quantity + 1 }
+        item.id === bolo.id 
+          ? { ...item, peso: item.peso + 0.5 }
           : item
       ))
     } else {
-      setCart([...cart, { ...product, quantity: 1 }])
+      setCart([...cart, { 
+        ...bolo, 
+        peso: 0.5,
+        preco_total: bolo.preco_por_kg * 0.5
+      }])
     }
   }
 
-  // Remover produto do carrinho
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.id !== productId))
+  // Remover bolo do carrinho
+  const removeFromCart = (boloId) => {
+    setCart(cart.filter(item => item.id !== boloId))
   }
 
-  // Atualizar quantidade no carrinho
-  const updateCartQuantity = (productId, quantity) => {
-    if (quantity <= 0) {
-      removeFromCart(productId)
+  // Atualizar peso no carrinho
+  const updateCartWeight = (boloId, peso) => {
+    if (peso <= 0) {
+      removeFromCart(boloId)
     } else {
       setCart(cart.map(item => 
-        item.id === productId 
-          ? { ...item, quantity }
+        item.id === boloId 
+          ? { 
+              ...item, 
+              peso,
+              preco_total: item.preco_por_kg * peso
+            }
           : item
       ))
     }
@@ -68,16 +130,13 @@ const SalesControl = () => {
 
   // Calcular total do carrinho
   const getCartTotal = () => {
-    return cart.reduce((total, item) => {
-      const price = item.preco || item.valor_unit || 0
-      return total + (price * item.quantity)
-    }, 0)
+    return cart.reduce((total, item) => total + item.preco_total, 0)
   }
 
   // Finalizar venda
   const handleFinalizeSale = async () => {
     if (cart.length === 0) {
-      alert('Adicione produtos ao carrinho antes de finalizar a venda.')
+      alert('Adicione bolos ao carrinho antes de finalizar a venda.')
       return
     }
 
@@ -93,9 +152,10 @@ const SalesControl = () => {
         valor_total: getCartTotal(),
         itens: cart.map(item => ({
           produto_id: item.id,
-          quantidade: item.quantity,
-          preco_unitario: item.preco || item.valor_unit || 0,
-          subtotal: (item.preco || item.valor_unit || 0) * item.quantity
+          nome: item.nome,
+          peso: item.peso,
+          preco_por_kg: item.preco_por_kg,
+          preco_total: item.preco_total
         })),
         created_at: new Date().toISOString()
       }
@@ -167,11 +227,11 @@ const SalesControl = () => {
             alignItems: 'center',
             gap: '0.5rem'
           }}>
-            <ShoppingCart size={32} />
-            Controle de Vendas
+            <Cake size={32} />
+            Vendas de Bolos
           </h1>
           <p style={{ color: '#64748b', margin: '0.5rem 0 0 0' }}>
-            Gerencie suas vendas e clientes
+            Cardápio de bolos com preço por kg
           </p>
         </div>
       </div>
@@ -369,7 +429,7 @@ const SalesControl = () => {
           <textarea
             value={saleData.observacoes}
             onChange={(e) => setSaleData({...saleData, observacoes: e.target.value})}
-            placeholder="Observações adicionais sobre a venda..."
+            placeholder="Observações sobre a venda (ex: data de entrega, decoração especial)..."
             rows={3}
             style={{
               width: '100%',
@@ -403,7 +463,7 @@ const SalesControl = () => {
           gap: '0.5rem'
         }}>
           <ShoppingCart size={24} />
-          Carrinho de Compras
+          Carrinho de Bolos
         </h2>
 
         {cart.length === 0 ? (
@@ -412,8 +472,8 @@ const SalesControl = () => {
             padding: '2rem',
             color: '#64748b'
           }}>
-            <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-            <p>Carrinho vazio. Adicione produtos para começar uma venda.</p>
+            <Cake size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <p>Carrinho vazio. Escolha bolos do cardápio abaixo.</p>
           </div>
         ) : (
           <div>
@@ -433,7 +493,7 @@ const SalesControl = () => {
                     {item.nome}
                   </h3>
                   <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>
-                    {formatCurrency(item.preco || item.valor_unit || 0)} cada
+                    {formatCurrency(item.preco_por_kg)} por kg
                   </p>
                 </div>
                 
@@ -448,7 +508,7 @@ const SalesControl = () => {
                     gap: '0.5rem'
                   }}>
                     <button
-                      onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                      onClick={() => updateCartWeight(item.id, item.peso - 0.5)}
                       style={{
                         background: '#ef4444',
                         color: 'white',
@@ -464,17 +524,17 @@ const SalesControl = () => {
                       <Minus size={16} />
                     </button>
                     
-                    <span style={{
-                      minWidth: '2rem',
+                    <div style={{
+                      minWidth: '80px',
                       textAlign: 'center',
                       fontWeight: '600',
                       color: '#1e293b'
                     }}>
-                      {item.quantity}
-                    </span>
+                      {item.peso} kg
+                    </div>
                     
                     <button
-                      onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                      onClick={() => updateCartWeight(item.id, item.peso + 0.5)}
                       style={{
                         background: '#10b981',
                         color: 'white',
@@ -497,7 +557,7 @@ const SalesControl = () => {
                     fontWeight: '600',
                     color: '#1e293b'
                   }}>
-                    {formatCurrency((item.preco || item.valor_unit || 0) * item.quantity)}
+                    {formatCurrency(item.preco_total)}
                   </div>
                   
                   <button
@@ -556,7 +616,7 @@ const SalesControl = () => {
         )}
       </div>
 
-      {/* Lista de Produtos */}
+      {/* Cardápio de Bolos */}
       <div style={{
         background: 'white',
         borderRadius: '12px',
@@ -574,115 +634,89 @@ const SalesControl = () => {
           alignItems: 'center',
           gap: '0.5rem'
         }}>
-          <ShoppingCart size={24} />
-          Produtos Disponíveis
+          <Cake size={24} />
+          Cardápio de Bolos
         </h2>
         
-        {products.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '2rem',
-            color: '#64748b'
-          }}>
-            <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-            <p>Nenhum produto cadastrado.</p>
-            <button
-              onClick={refreshAllData}
-              style={{
-                marginTop: '1rem',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.75rem 1.5rem',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: '500'
-              }}
-            >
-              Carregar Dados
-            </button>
-          </div>
-        ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: '1rem'
-          }}>
-            {products.map(product => (
-              <div key={product.id} style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                padding: '1rem',
-                background: '#f8fafc',
-                transition: 'all 0.2s'
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '1rem'
+        }}>
+          {bolosCardapio.map(bolo => (
+            <div key={bolo.id} style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '1rem',
+              background: '#f8fafc',
+              transition: 'all 0.2s'
+            }}>
+              <h3 style={{
+                margin: '0 0 0.5rem 0',
+                fontSize: '1.1rem',
+                color: '#1e293b'
               }}>
-                <h3 style={{
-                  margin: '0 0 0.5rem 0',
-                  fontSize: '1.1rem',
-                  color: '#1e293b'
-                }}>
-                  {product.nome}
-                </h3>
-                
-                {product.descricao && (
-                  <p style={{
-                    margin: '0 0 0.5rem 0',
-                    color: '#64748b',
-                    fontSize: '0.9rem'
-                  }}>
-                    {product.descricao}
-                  </p>
-                )}
-                
+                {bolo.nome}
+              </h3>
+              
+              <p style={{
+                margin: '0 0 0.5rem 0',
+                color: '#64748b',
+                fontSize: '0.9rem'
+              }}>
+                {bolo.descricao}
+              </p>
+              
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1rem'
+              }}>
                 <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '1rem'
+                  fontSize: '1.2rem',
+                  fontWeight: '600',
+                  color: '#059669'
                 }}>
-                  <div style={{
-                    fontSize: '1.2rem',
-                    fontWeight: '600',
-                    color: '#059669'
-                  }}>
-                    {formatCurrency(product.preco || product.valor_unit || 0)}
-                  </div>
-                  
-                  <div style={{
-                    fontSize: '0.9rem',
-                    color: '#64748b'
-                  }}>
-                    Estoque: {product.estoque || 0}
-                  </div>
+                  {formatCurrency(bolo.preco_por_kg)}/kg
                 </div>
                 
-                <button
-                  onClick={() => addToCart(product)}
-                  style={{
-                    width: '100%',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '0.75rem',
-                    fontSize: '0.9rem',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Plus size={16} />
-                  Adicionar ao Carrinho
-                </button>
+                <div style={{
+                  fontSize: '0.9rem',
+                  color: '#64748b',
+                  background: '#e0f2fe',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px'
+                }}>
+                  {bolo.categoria}
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+              
+              <button
+                onClick={() => addToCart(bolo)}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Plus size={16} />
+                Adicionar ao Carrinho
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Botão Finalizar Venda */}
