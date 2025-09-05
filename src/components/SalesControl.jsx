@@ -8,7 +8,6 @@ import {
   Trash2, 
   DollarSign,
   CheckCircle,
-  Package,
   User,
   Phone,
   Mail,
@@ -575,7 +574,7 @@ const SalesControl = () => {
           alignItems: 'center',
           gap: '0.5rem'
         }}>
-          <Package size={24} />
+          <ShoppingCart size={24} />
           Produtos Disponíveis
         </h2>
         
@@ -585,7 +584,7 @@ const SalesControl = () => {
             padding: '2rem',
             color: '#64748b'
           }}>
-            <Package size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <ShoppingCart size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
             <p>Nenhum produto cadastrado.</p>
             <button
               onClick={refreshAllData}

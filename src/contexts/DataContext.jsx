@@ -331,11 +331,12 @@ export const DataProvider = ({ children }) => {
       // Carregar dados sequencialmente para evitar sobrecarga
       console.log('🔄 Iniciando carregamento de dados...')
       
+      // Carregar dados sequencialmente
       await fetchProducts()
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Aguardar 2 segundos
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       await fetchMovements()
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Aguardar 2 segundos
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       await fetchSales()
       
