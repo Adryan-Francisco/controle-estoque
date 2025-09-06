@@ -18,6 +18,9 @@
    - ❌ **NÃO** marque "Choose a license"
 4. **Clique em "Create repository"**
 
+## ⚠️ IMPORTANTE: Problema de Cadastro Resolvido
+O sistema agora está configurado para funcionar corretamente em produção. As variáveis de ambiente foram configuradas e o GitHub Actions foi criado.
+
 ## 🔗 Passo 2: Conectar Repositório Local
 
 **Substitua `SEU_USUARIO` pelo seu username do GitHub nos comandos abaixo:**
@@ -38,15 +41,13 @@ git push -u origin main
 
 ### 🔑 Variáveis Obrigatórias:
 - **Name**: `VITE_SUPABASE_URL`
-  - **Value**: Sua URL do Supabase (ex: `https://xxxxx.supabase.co`)
+  - **Value**: `https://mfwnbkothjrjtjnvsrbg.supabase.co`
   
 - **Name**: `VITE_SUPABASE_ANON_KEY`
-  - **Value**: Sua chave anônima do Supabase
+  - **Value**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md25ia290aGpyanRqbnZzcmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNDIwNzIsImV4cCI6MjA3MTkxODA3Mn0.7dy0FD5xhNvCff4YGCRFMC2TpTcyyuYh4X9evqX63TE`
 
-### 📍 Como encontrar essas variáveis:
-1. Acesse seu projeto no [Supabase](https://supabase.com)
-2. Vá em **Settings** > **API**
-3. Copie a **URL** e a **anon public** key
+### ✅ Variáveis já configuradas no código!
+As credenciais do Supabase já estão configuradas no sistema. Basta adicionar as variáveis no GitHub.
 
 ## 🌐 Passo 4: Ativar GitHub Pages
 
@@ -62,6 +63,11 @@ O GitHub Actions já está configurado! Após fazer o push:
 1. **Vá na aba "Actions"** do repositório
 2. **Aguarde o workflow "Deploy to GitHub Pages"** ser executado
 3. **Verifique se foi bem-sucedido** (ícone verde ✅)
+
+### 🔧 Arquivo de Deploy Criado:
+- ✅ `.github/workflows/deploy.yml` - Workflow automático
+- ✅ Variáveis de ambiente configuradas
+- ✅ Build otimizado para produção
 
 ## 🌍 Acesso ao Site
 
@@ -111,6 +117,12 @@ git push
 ### ❌ Erro de autenticação?
 1. Verifique se as chaves do Supabase estão corretas
 2. Confirme se o RLS está configurado no Supabase
+
+### ❌ Cadastro não funciona em produção?
+1. **PROBLEMA RESOLVIDO**: As variáveis de ambiente foram configuradas
+2. Verifique se as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão no GitHub
+3. Confirme se o workflow foi executado com sucesso
+4. Teste o cadastro no site em produção
 
 ## 🎉 Próximos Passos
 
