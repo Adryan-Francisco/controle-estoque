@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // Configuração para produção (GitHub Pages) - Otimizada
 export default defineConfig({
   plugins: [react()],
-  base: '/controle-estoque-vendas/',
+  base: '/controle-estoque/',
   build: {
     outDir: 'dist',
     // Otimizações máximas para produção

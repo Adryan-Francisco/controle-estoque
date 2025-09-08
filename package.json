@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://adryan-francisco.github.io/controle-estoque-vendas",
+  "homepage": "https://adryan-francisco.github.io/controle-estoque",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

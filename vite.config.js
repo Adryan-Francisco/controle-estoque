@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/controle-estoque-vendas/',
+  base: '/controle-estoque/',
   build: {
     outDir: 'dist',
     // Otimizações de build para reduzir tamanho
