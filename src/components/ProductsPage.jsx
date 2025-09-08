@@ -15,12 +15,8 @@ const ProductsPage = ({ onBack }) => {
   const { user } = useAuth()
   const { products, loading, addProduct, updateProduct, deleteProduct, refreshAllData } = useData()
 
-  useEffect(() => {
-    // Carregar dados se não tiver produtos
-    if (products.length === 0) {
-      refreshAllData()
-    }
-  }, [])
+  // Removido useEffect que causava requisições excessivas
+  // O DataContext já carrega os dados automaticamente
 
   const handleSaveProduct = async (productData) => {
     try {

@@ -61,11 +61,8 @@ const SalesControl = ({ onShowHistory }) => {
   }, [user])
 
   // Carregar bolos do Supabase
-  useEffect(() => {
-    if (user) {
-      refreshAllData()
-    }
-  }, [user, refreshAllData])
+  // Removido useEffect que causava requisições excessivas
+  // O DataContext já carrega os dados automaticamente
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, SUPABASE_CONFIG, cacheManager, requestCounter } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 
 const DataContext = createContext({})
@@ -24,17 +24,30 @@ export const DataProvider = ({ children }) => {
   const [isProcessingQueue, setIsProcessingQueue] = useState(false)
   const [lastRequestTime, setLastRequestTime] = useState(0)
   
-  // Configurações de throttling ULTRA restritivas para evitar ERR_INSUFFICIENT_RESOURCES
-  const FETCH_INTERVAL = 1800000 // 30 minutos
-  const REQUEST_TIMEOUT = 20000 // 20 segundos
-  const MAX_RETRIES = 0 // Sem retry para evitar sobrecarga
-  const MIN_REQUEST_INTERVAL = 30000 // 30 segundos entre requisições
+  // Configurações ULTRA conservadoras - Modo Offline First
+  const FETCH_INTERVAL = SUPABASE_CONFIG.CACHE_TTL // 1 HORA
+  const REQUEST_TIMEOUT = SUPABASE_CONFIG.REQUEST_TIMEOUT // 30 segundos
+  const MAX_RETRIES = SUPABASE_CONFIG.MAX_RETRIES // 0 retries - falha imediatamente
+  const MIN_REQUEST_INTERVAL = 5 * 60 * 1000 // 5 MINUTOS entre requisições
   const MAX_QUEUE_SIZE = 1 // Apenas 1 requisição na fila
+  const SYNC_INTERVAL = SUPABASE_CONFIG.SYNC_INTERVAL // 5 minutos
   
   const { user } = useAuth()
 
-  // Função para fazer requisições com timeout e retry
+  // Função para fazer requisições com controle de limite diário
   const makeRequest = useCallback(async (requestFn, retries = MAX_RETRIES) => {
+    // Verificar limite diário de requisições
+    if (!requestCounter.canMakeRequest()) {
+      console.log('🚫 Limite diário de requisições atingido. Usando dados locais.')
+      throw new Error('Limite diário de requisições atingido')
+    }
+
+    // Verificar se está em modo offline
+    if (SUPABASE_CONFIG.OFFLINE_MODE) {
+      console.log('📱 Modo offline ativo. Usando dados locais.')
+      throw new Error('Modo offline ativo')
+    }
+
     for (let i = 0; i <= retries; i++) {
       try {
         const controller = new AbortController()
@@ -42,6 +55,10 @@ export const DataProvider = ({ children }) => {
         
         const result = await requestFn()
         clearTimeout(timeoutId)
+        
+        // Incrementar contador de requisições
+        requestCounter.increment()
+        console.log(`📊 Requisições hoje: ${requestCounter.getToday()}/${SUPABASE_CONFIG.MAX_DAILY_REQUESTS}`)
         
         return result
       } catch (error) {
@@ -105,36 +122,45 @@ export const DataProvider = ({ children }) => {
     setLastDataFetch(0)
   }, [])
 
-  // Buscar produtos com cache e throttling
-  const fetchProducts = useCallback(async (forceRefresh = false) => {
+  // Buscar produtos com cache otimizado e paginação
+  const fetchProducts = useCallback(async (forceRefresh = false, page = 0) => {
     if (!user) return
 
     const now = Date.now()
-    const cacheKey = `products_${user.id}`
+    const cacheKey = `products_${user.id}_${page}`
     
-    // Verificar cache
+    // Verificar cache em memória primeiro
+    const cachedData = cacheManager.get(cacheKey)
+    if (!forceRefresh && cachedData) {
+      console.log('📦 Usando cache em memória para produtos')
+      setProducts(cachedData)
+      return
+    }
+
+    // Verificar cache local
     if (!forceRefresh && cache[cacheKey] && (now - cache[cacheKey].timestamp) < FETCH_INTERVAL) {
-      console.log('📦 Usando cache para produtos')
+      console.log('📦 Usando cache local para produtos')
       setProducts(cache[cacheKey].data)
       return
     }
 
     // Verificar throttling
-    if (!forceRefresh && (now - lastDataFetch) < FETCH_INTERVAL) {
+    if (!forceRefresh && (now - lastDataFetch) < MIN_REQUEST_INTERVAL) {
       console.log('⏳ Throttling: aguardando para buscar produtos')
       return
     }
 
     try {
-      console.log('🔄 Buscando produtos do Supabase...')
+      console.log('🔄 Buscando produtos do Supabase (página', page, ')...')
       setIsLoading(true)
       setLastDataFetch(now)
 
       const requestFn = () => supabase
         .from('produtos')
-        .select('*')
+        .select('id, nome, descricao, preco, estoque_atual, estoque_minimo, categoria, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
+        .range(page * SUPABASE_CONFIG.DEFAULT_PAGE_SIZE, (page + 1) * SUPABASE_CONFIG.DEFAULT_PAGE_SIZE - 1)
 
       const { data, error } = await makeRequest(requestFn)
 
@@ -147,19 +173,25 @@ export const DataProvider = ({ children }) => {
       }
 
       console.log('✅ Produtos carregados:', data?.length || 0)
-      setProducts(data || [])
+      const productsData = data || []
+      setProducts(productsData)
       
-      // Atualizar cache
+      // Atualizar cache em memória
+      cacheManager.set(cacheKey, productsData)
+      
+      // Atualizar cache local
       setCache(prev => ({
         ...prev,
         [cacheKey]: {
-          data: data || [],
+          data: productsData,
           timestamp: now
         }
       }))
 
-      // Salvar no localStorage
-      localStorage.setItem(`products_${user.id}`, JSON.stringify(data || []))
+      // Salvar no localStorage (apenas se for página 0)
+      if (page === 0) {
+        localStorage.setItem(`products_${user.id}`, JSON.stringify(productsData))
+      }
 
     } catch (error) {
       console.error('❌ Erro crítico ao buscar produtos:', error)
@@ -169,7 +201,7 @@ export const DataProvider = ({ children }) => {
     } finally {
       setIsLoading(false)
     }
-  }, [user, cache, lastDataFetch, FETCH_INTERVAL, makeRequest])
+  }, [user, cache, lastDataFetch, MIN_REQUEST_INTERVAL, makeRequest])
 
   // Buscar movimentações com cache e throttling
   const fetchMovements = useCallback(async (forceRefresh = false) => {
@@ -369,15 +401,47 @@ export const DataProvider = ({ children }) => {
     }
   }, [user, cache, lastDataFetch, FETCH_INTERVAL, makeRequest])
 
-  // Atualizar todos os dados - ULTRA conservadora para evitar ERR_INSUFFICIENT_RESOURCES
+  // Controle de requisições em andamento
+  const [pendingRequests, setPendingRequests] = useState(new Set())
+  const [refreshTimeout, setRefreshTimeout] = useState(null)
+  
+  // Atualizar todos os dados - MODO OFFLINE FIRST
   const refreshAllData = useCallback(async (forceRefresh = false) => {
+    if (!user) return
+
+    // Se não for forçado, usar debounce de 30 segundos
+    if (!forceRefresh) {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout)
+      }
+      
+      const timeoutId = setTimeout(async () => {
+        await executeRefresh(forceRefresh)
+      }, 30000) // 30 segundos de debounce
+      
+      setRefreshTimeout(timeoutId)
+      return
+    }
+
+    // Se for forçado, executar imediatamente
+    await executeRefresh(forceRefresh)
+  }, [user])
+
+  // Função interna para executar o refresh
+  const executeRefresh = useCallback(async (forceRefresh = false) => {
     if (!user) return
 
     const now = Date.now()
     
-    // Verificar se já fez uma requisição recentemente
-    if (!forceRefresh && (now - lastDataFetch) < FETCH_INTERVAL) {
-      console.log('⏰ Aguardando intervalo entre requisições (30 minutos)')
+    // Verificar se já há uma requisição similar em andamento
+    if (pendingRequests.has('refresh') && !forceRefresh) {
+      console.log('⏳ Já há uma requisição de refresh em andamento, ignorando')
+      return
+    }
+
+    // Verificar se já fez uma requisição recentemente (aumentado para 5 minutos)
+    if (!forceRefresh && (now - lastDataFetch) < SYNC_INTERVAL) {
+      console.log('⏰ Aguardando intervalo entre requisições (5 minutos)')
       return
     }
 
@@ -387,25 +451,24 @@ export const DataProvider = ({ children }) => {
       return
     }
 
+    // Marcar requisição como em andamento
+    setPendingRequests(prev => new Set([...prev, 'refresh']))
     setIsLoading(true)
     setLastDataFetch(now)
 
     try {
-      console.log('🔄 Iniciando busca de dados ULTRA conservadora...')
+      console.log('🔄 Iniciando busca de dados ULTRA otimizada...')
       
-      // Buscar apenas produtos primeiro (mais crítico)
+      // Buscar dados SEQUENCIALMENTE para evitar sobrecarga
       await fetchProducts(forceRefresh)
-      await new Promise(resolve => setTimeout(resolve, 15000)) // Pausa de 15s
+      await new Promise(resolve => setTimeout(resolve, 3000)) // Pausa de 3s
       
-      // Buscar movimentações
       await fetchMovements(forceRefresh)
-      await new Promise(resolve => setTimeout(resolve, 15000)) // Pausa de 15s
+      await new Promise(resolve => setTimeout(resolve, 3000)) // Pausa de 3s
       
-      // Buscar vendas
       await fetchSales(forceRefresh)
-      await new Promise(resolve => setTimeout(resolve, 15000)) // Pausa de 15s
+      await new Promise(resolve => setTimeout(resolve, 3000)) // Pausa de 3s
       
-      // Buscar bolos por último
       await fetchBolos(forceRefresh)
       
       console.log('✅ Todos os dados carregados com sucesso')
@@ -415,8 +478,13 @@ export const DataProvider = ({ children }) => {
       loadLocalData()
     } finally {
       setIsLoading(false)
+      setPendingRequests(prev => {
+        const newSet = new Set(prev)
+        newSet.delete('refresh')
+        return newSet
+      })
     }
-  }, [user, lastDataFetch, FETCH_INTERVAL, isLoading, fetchProducts, fetchMovements, fetchSales, fetchBolos])
+  }, [user, lastDataFetch, isLoading, fetchProducts, fetchMovements, fetchSales, fetchBolos, loadLocalData, pendingRequests])
 
   // Adicionar produto
   const addProduct = async (productData) => {
@@ -1048,21 +1116,85 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-  // Limpar dados quando o usuário mudar
+  // Função para limpeza automática de dados antigos
+  const cleanupOldData = useCallback(() => {
+    if (!user) return
+    
+    const now = Date.now()
+    const CLEANUP_THRESHOLD = 30 * 24 * 60 * 60 * 1000 // 30 dias
+    
+    try {
+      // Limpar cache antigo
+      Object.keys(cache).forEach(key => {
+        if (now - cache[key].timestamp > CLEANUP_THRESHOLD) {
+          delete cache[key]
+        }
+      })
+      
+      // Limpar localStorage antigo
+      const keys = Object.keys(localStorage)
+      keys.forEach(key => {
+        if (key.startsWith(`products_${user.id}`) || 
+            key.startsWith(`movements_${user.id}`) || 
+            key.startsWith(`sales_${user.id}`) || 
+            key.startsWith(`bolos_${user.id}`)) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key))
+            if (data && data.length > 0 && data[0].created_at) {
+              const dataAge = now - new Date(data[0].created_at).getTime()
+              if (dataAge > CLEANUP_THRESHOLD) {
+                localStorage.removeItem(key)
+                console.log('🧹 Dados antigos removidos:', key)
+              }
+            }
+          } catch (e) {
+            // Se não conseguir parsear, remover
+            localStorage.removeItem(key)
+          }
+        }
+      })
+      
+      // Limpar cache em memória
+      cacheManager.clear()
+      
+      console.log('✅ Limpeza de dados antigos concluída')
+    } catch (error) {
+      console.error('❌ Erro na limpeza de dados:', error)
+    }
+  }, [user, cache])
+
+  // Limpar dados quando o usuário mudar - MODO OFFLINE FIRST
   useEffect(() => {
     if (user) {
       console.log('👤 Usuário logado:', user.email)
-      // Carregar dados locais primeiro (mais rápido)
+      
+      // Fazer limpeza de dados antigos primeiro
+      cleanupOldData()
+      
+      // SEMPRE carregar dados locais primeiro
       loadLocalData()
-      // Depois tentar sincronizar com Supabase (com delay)
-      setTimeout(() => {
-        refreshAllData()
-      }, 5000) // Aguardar 5 segundos antes de tentar Supabase
+      
+      // Só sincronizar com Supabase se NÃO houver dados locais E não estiver em modo offline
+      const hasLocalData = products.length > 0 || movements.length > 0 || sales.length > 0 || bolos.length > 0
+      
+      if (!hasLocalData && !SUPABASE_CONFIG.OFFLINE_MODE) {
+        // Aguardar 10 segundos antes de tentar Supabase
+        const timeoutId = setTimeout(() => {
+          refreshAllData()
+        }, 10000)
+        
+        return () => clearTimeout(timeoutId)
+      } else if (hasLocalData) {
+        console.log('📱 Usando dados locais - sem requisições ao Supabase')
+      } else if (SUPABASE_CONFIG.OFFLINE_MODE) {
+        console.log('📱 Modo offline ativo - sem requisições ao Supabase')
+      }
     } else {
       console.log('👤 Usuário deslogado')
       clearAllData()
+      cacheManager.clear()
     }
-  }, [user, clearAllData, loadLocalData, refreshAllData])
+  }, [user]) // Removidas dependências que causavam loops
 
   // Escutar mudanças de usuário
   useEffect(() => {
@@ -1090,7 +1222,12 @@ export const DataProvider = ({ children }) => {
     deleteSale,
     refreshAllData,
     syncLocalData,
-    clearAllData
+    clearAllData,
+    cleanupOldData,
+    fetchProducts,
+    fetchMovements,
+    fetchSales,
+    fetchBolos
   }
 
   return (

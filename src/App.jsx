@@ -10,6 +10,7 @@ import SalesControl from './components/SalesControl'
 import SalesHistory from './components/SalesHistory'
 import SalesReports from './components/SalesReports'
 import DataIsolationNotification from './components/DataIsolationNotification'
+import PerformanceMonitor from './components/PerformanceMonitor'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -74,6 +75,7 @@ function App() {
                 />
               )}
               <DataIsolationNotification />
+              <PerformanceMonitor />
             </div>
           </ProtectedRoute>
         </NotificationProvider>

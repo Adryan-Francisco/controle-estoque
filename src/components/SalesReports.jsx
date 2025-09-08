@@ -19,11 +19,8 @@ const SalesReports = ({ onBack }) => {
   const [dateFilter, setDateFilter] = useState('7')
   const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => {
-    if (sales.length === 0) {
-      refreshAllData()
-    }
-  }, [])
+  // Removido useEffect que causava requisições excessivas
+  // O DataContext já carrega os dados automaticamente
 
   // Filtrar vendas por período
   const getFilteredSales = () => {

@@ -3,11 +3,30 @@ import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import ProductForm from './ProductForm'
 import StatCard from './StatCard'
-import MovementReports from './MovementReports'
 import SimpleStockMovement from './SimpleStockMovement'
 import SupabaseTest from './SupabaseTest'
 import RLSStatusNotification from './RLSStatusNotification'
-import { Package, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Settings, ArrowRight } from 'lucide-react'
+import PerformanceMonitor from './PerformanceMonitor'
+import { 
+  Package, 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  AlertTriangle, 
+  Settings, 
+  ArrowRight,
+  Cake,
+  ShoppingCart,
+  BarChart3,
+  RefreshCw,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Clock
+} from 'lucide-react'
 
 const Dashboard = ({ onNavigateToProducts }) => {
   const [showForm, setShowForm] = useState(false)
@@ -74,14 +93,21 @@ const Dashboard = ({ onNavigateToProducts }) => {
     setEditingProduct(null)
   }
 
-  // Calcular estatísticas
+  // Calcular estatísticas otimizadas
   const stats = {
     totalProducts: products.length,
-    totalValue: products.reduce((sum, p) => sum + (p.valor_total || (p.valor_unit || 0) * (p.quantidade || 0)), 0),
-    lowStock: products.filter(p => (p.quantidade || 0) <= 10 && (p.quantidade || 0) > 0).length,
-    outOfStock: products.filter(p => (p.quantidade || 0) <= 0).length,
-    totalEntries: products.reduce((sum, p) => sum + (p.entrada || 0), 0),
-    totalExits: products.reduce((sum, p) => sum + (p.saida || 0), 0),
+    totalBolos: bolos.length,
+    totalValue: products.reduce((sum, p) => sum + ((p.preco || 0) * (p.estoque_atual || 0)), 0),
+    lowStock: products.filter(p => (p.estoque_atual || 0) <= (p.estoque_minimo || 0) && (p.estoque_atual || 0) > 0).length,
+    outOfStock: products.filter(p => (p.estoque_atual || 0) <= 0).length,
+    totalSales: sales.length,
+    totalSalesValue: sales.reduce((sum, s) => sum + (s.valor_total || 0), 0),
+    totalMovements: movements.length,
+    recentMovements: movements.filter(m => {
+      const movementDate = new Date(m.created_at)
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      return movementDate >= weekAgo
+    }).length
   }
 
   const formatCurrency = (value) => {
@@ -179,6 +205,87 @@ const Dashboard = ({ onNavigateToProducts }) => {
           </button>
         </div>
 
+        {/* Header com ações rápidas */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '2rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div>
+            <h1 style={{
+              fontSize: '2.5rem',
+              fontWeight: '800',
+              color: '#1e293b',
+              margin: 0,
+              background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              🎂 Controle de Estoque
+            </h1>
+            <p style={{
+              fontSize: '1.1rem',
+              color: '#64748b',
+              margin: '0.5rem 0 0 0'
+            }}>
+              Gestão completa para sua confeitaria
+            </p>
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            gap: '1rem',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={handleAddProduct}
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '0.75rem 1.5rem',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Plus size={18} />
+              Novo Produto
+            </button>
+            
+            <button
+              onClick={() => refreshAllData(true)}
+              style={{
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '0.75rem 1.5rem',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <RefreshCw size={18} />
+              Atualizar
+            </button>
+          </div>
+        </div>
+
         {/* Estatísticas principais */}
         <div style={{
           display: 'grid',
@@ -196,14 +303,40 @@ const Dashboard = ({ onNavigateToProducts }) => {
           />
 
           <StatCard
-            title="Valor Total"
+            title="Total de Bolos"
+            value={stats.totalBolos}
+            icon={Cake}
+            color="#8b5cf6"
+            description="Bolos disponíveis"
+            gradient="linear-gradient(135deg, #8b5cf6, #7c3aed)"
+          />
+
+          <StatCard
+            title="Valor em Estoque"
             value={formatCurrency(stats.totalValue)}
             icon={DollarSign}
             color="#10b981"
-            description="Valor em estoque"
+            description="Valor total do estoque"
             gradient="linear-gradient(135deg, #10b981, #059669)"
           />
 
+          <StatCard
+            title="Vendas Realizadas"
+            value={stats.totalSales}
+            icon={ShoppingCart}
+            color="#f59e0b"
+            description="Total de vendas"
+            gradient="linear-gradient(135deg, #f59e0b, #d97706)"
+          />
+        </div>
+
+        {/* Estatísticas de alertas */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '2rem'
+        }}>
           <StatCard
             title="Estoque Baixo"
             value={stats.lowStock}
@@ -216,44 +349,274 @@ const Dashboard = ({ onNavigateToProducts }) => {
           <StatCard
             title="Sem Estoque"
             value={stats.outOfStock}
-            icon={TrendingDown}
+            icon={XCircle}
             color="#ef4444"
             description="Fora de estoque"
             gradient="linear-gradient(135deg, #ef4444, #dc2626)"
           />
-        </div>
 
-        {/* Relatório de Movimentações */}
-        <div style={{
-          marginBottom: '2rem'
-        }}>
-          <MovementReports />
-        </div>
-
-        {/* Movimentações */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
           <StatCard
-            title="Total de Entradas"
-            value={stats.totalEntries}
-            icon={TrendingUp}
-            color="#10b981"
-            description="Produtos recebidos"
-            gradient="linear-gradient(135deg, #10b981, #059669)"
+            title="Faturamento"
+            value={formatCurrency(stats.totalSalesValue)}
+            icon={BarChart3}
+            color="#06b6d4"
+            description="Total vendido"
+            gradient="linear-gradient(135deg, #06b6d4, #0891b2)"
           />
 
           <StatCard
-            title="Total de Saídas"
-            value={stats.totalExits}
-            icon={TrendingDown}
-            color="#ef4444"
-            description="Produtos vendidos"
-            gradient="linear-gradient(135deg, #ef4444, #dc2626)"
+            title="Movimentações"
+            value={stats.recentMovements}
+            icon={Clock}
+            color="#6366f1"
+            description="Últimos 7 dias"
+            gradient="linear-gradient(135deg, #6366f1, #4f46e5)"
           />
+        </div>
+
+
+        {/* Produtos Recentes */}
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '2rem',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e2e8f0',
+          marginBottom: '2rem'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: '#1e293b',
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <Package size={24} />
+              Produtos Recentes
+            </h2>
+            <button
+              onClick={onNavigateToProducts}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1rem',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Eye size={16} />
+              Ver Todos
+            </button>
+          </div>
+
+          {products.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '3rem',
+              color: '#64748b'
+            }}>
+              <Package size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+              <p style={{ fontSize: '1.1rem', margin: '0 0 1rem 0' }}>Nenhum produto cadastrado</p>
+              <button
+                onClick={handleAddProduct}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Cadastrar Primeiro Produto
+              </button>
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '1rem'
+            }}>
+              {products.slice(0, 6).map((product) => (
+                <div
+                  key={product.id}
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    background: '#f8fafc',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.borderColor = '#8b5cf6'
+                    e.target.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.15)'
+                    e.target.style.transform = 'translateY(-2px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.borderColor = '#e2e8f0'
+                    e.target.style.boxShadow = 'none'
+                    e.target.style.transform = 'translateY(0)'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '1.25rem',
+                      fontWeight: '700'
+                    }}>
+                      {product.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      gap: '0.5rem'
+                    }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditProduct(product)
+                        }}
+                        style={{
+                          background: '#f1f5f9',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '0.5rem',
+                          cursor: 'pointer',
+                          color: '#64748b',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteProduct(product.id)
+                        }}
+                        style={{
+                          background: '#fef2f2',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '0.5rem',
+                          cursor: 'pointer',
+                          color: '#ef4444',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <h3 style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '600',
+                    color: '#1e293b',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    {product.nome}
+                  </h3>
+
+                  <p style={{
+                    fontSize: '0.9rem',
+                    color: '#64748b',
+                    margin: '0 0 1rem 0',
+                    lineHeight: '1.4'
+                  }}>
+                    {product.descricao || 'Sem descrição'}
+                  </p>
+
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <span style={{
+                      fontSize: '0.9rem',
+                      color: '#64748b'
+                    }}>
+                      Estoque: {product.estoque_atual || 0}
+                    </span>
+                    <span style={{
+                      fontSize: '0.9rem',
+                      color: '#64748b'
+                    }}>
+                      Mín: {product.estoque_minimo || 0}
+                    </span>
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{
+                      fontSize: '1.1rem',
+                      fontWeight: '700',
+                      color: '#10b981'
+                    }}>
+                      {formatCurrency(product.preco || 0)}
+                    </span>
+                    <span style={{
+                      fontSize: '0.8rem',
+                      color: '#64748b',
+                      textTransform: 'capitalize'
+                    }}>
+                      {product.categoria || 'Geral'}
+                    </span>
+                  </div>
+
+                  {/* Indicador de status do estoque */}
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: '600',
+                    textAlign: 'center',
+                    background: (product.estoque_atual || 0) <= 0 ? '#fef2f2' : 
+                              (product.estoque_atual || 0) <= (product.estoque_minimo || 0) ? '#fef3c7' : '#f0fdf4',
+                    color: (product.estoque_atual || 0) <= 0 ? '#dc2626' : 
+                          (product.estoque_atual || 0) <= (product.estoque_minimo || 0) ? '#d97706' : '#059669'
+                  }}>
+                    {(product.estoque_atual || 0) <= 0 ? '❌ Sem Estoque' : 
+                     (product.estoque_atual || 0) <= (product.estoque_minimo || 0) ? '⚠️ Estoque Baixo' : '✅ Em Estoque'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
 
@@ -485,7 +848,7 @@ const Dashboard = ({ onNavigateToProducts }) => {
         />
       )}
 
-      {/* Botões de Teste e Sincronização */}
+      {/* Botões de Ação Rápida */}
       <div style={{
         position: 'fixed',
         bottom: '20px',
@@ -493,7 +856,7 @@ const Dashboard = ({ onNavigateToProducts }) => {
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
-        gap: '10px'
+        gap: '12px'
       }}>
         <button
           onClick={syncLocalData}
@@ -501,56 +864,92 @@ const Dashboard = ({ onNavigateToProducts }) => {
             background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
             color: 'white',
             border: 'none',
-            borderRadius: '50px',
-            padding: '1rem',
+            borderRadius: '16px',
+            padding: '1rem 1.5rem',
             fontSize: '0.9rem',
             fontWeight: '600',
             cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-            transition: 'all 0.2s ease',
+            boxShadow: '0 8px 20px rgba(16, 185, 129, 0.3)',
+            transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem'
+            gap: '0.75rem',
+            minWidth: '140px',
+            justifyContent: 'center'
           }}
           onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-2px)'
-            e.target.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)'
+            e.target.style.transform = 'translateY(-3px) scale(1.05)'
+            e.target.style.boxShadow = '0 12px 24px rgba(16, 185, 129, 0.4)'
           }}
           onMouseLeave={(e) => {
-            e.target.style.transform = 'translateY(0)'
-            e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'
+            e.target.style.transform = 'translateY(0) scale(1)'
+            e.target.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.3)'
           }}
         >
-          🔄 Sincronizar
+          <RefreshCw size={18} />
+          Sincronizar
         </button>
         
         <button
           onClick={() => setShowSupabaseTest(true)}
           style={{
-            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
             color: 'white',
             border: 'none',
-            borderRadius: '50px',
-            padding: '1rem',
+            borderRadius: '16px',
+            padding: '1rem 1.5rem',
             fontSize: '0.9rem',
             fontWeight: '600',
             cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-            transition: 'all 0.2s ease',
+            boxShadow: '0 8px 20px rgba(139, 92, 246, 0.3)',
+            transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem'
+            gap: '0.75rem',
+            minWidth: '140px',
+            justifyContent: 'center'
           }}
           onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-2px)'
-            e.target.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)'
+            e.target.style.transform = 'translateY(-3px) scale(1.05)'
+            e.target.style.boxShadow = '0 12px 24px rgba(139, 92, 246, 0.4)'
           }}
           onMouseLeave={(e) => {
-            e.target.style.transform = 'translateY(0)'
-            e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'
+            e.target.style.transform = 'translateY(0) scale(1)'
+            e.target.style.boxShadow = '0 8px 20px rgba(139, 92, 246, 0.3)'
           }}
         >
-          🔧 Teste Supabase
+          <Settings size={18} />
+          Teste Sistema
+        </button>
+
+        <button
+          onClick={handleAddProduct}
+          style={{
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '60px',
+            height: '60px',
+            fontSize: '1.5rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: '0 8px 20px rgba(245, 158, 11, 0.3)',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-3px) scale(1.1)'
+            e.target.style.boxShadow = '0 12px 24px rgba(245, 158, 11, 0.4)'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0) scale(1)'
+            e.target.style.boxShadow = '0 8px 20px rgba(245, 158, 11, 0.3)'
+          }}
+        >
+          <Plus size={24} />
         </button>
       </div>
 
