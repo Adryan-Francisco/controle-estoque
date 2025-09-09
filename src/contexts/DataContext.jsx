@@ -112,6 +112,13 @@ export const DataProvider = ({ children }) => {
 
   // Função para fazer requisições com controle de limite diário e fila
   const makeRequest = useCallback(async (requestFn, retries = MAX_RETRIES) => {
+    // VERIFICAÇÃO RIGOROSA: Se há dados locais, NÃO fazer requisições
+    const hasLocalData = products.length > 0 || movements.length > 0 || sales.length > 0 || bolos.length > 0
+    if (hasLocalData) {
+      console.log('📱 Dados locais disponíveis. Bloqueando requisições ao Supabase.')
+      throw new Error('Dados locais disponíveis - requisições bloqueadas')
+    }
+
     // Verificar limite diário de requisições
     if (!requestCounter.canMakeRequest()) {
       console.log('🚫 Limite diário de requisições atingido. Usando dados locais.')
@@ -140,7 +147,7 @@ export const DataProvider = ({ children }) => {
 
     // Processar imediatamente se a fila estiver vazia
     return makeRequestDirect(requestFn, retries)
-  }, [requestCounter, SUPABASE_CONFIG, requestQueue, isProcessingQueue, MAX_QUEUE_SIZE, processQueue, makeRequestDirect])
+  }, [requestCounter, SUPABASE_CONFIG, requestQueue, isProcessingQueue, MAX_QUEUE_SIZE, processQueue, makeRequestDirect, products, movements, sales, bolos])
 
   // Carregar dados locais como fallback
   const loadLocalData = useCallback(() => {
@@ -193,6 +200,14 @@ export const DataProvider = ({ children }) => {
   // Buscar produtos com cache otimizado e paginação
   const fetchProducts = useCallback(async (forceRefresh = false, page = 0) => {
     if (!user) return
+
+    // VERIFICAÇÃO RIGOROSA: Se há dados locais, NÃO fazer requisições
+    const localData = JSON.parse(localStorage.getItem(`products_${user.id}`) || '[]')
+    if (localData.length > 0 && !forceRefresh) {
+      console.log('📱 Dados locais de produtos disponíveis. Usando dados locais.')
+      setProducts(localData)
+      return
+    }
 
     const now = Date.now()
     const cacheKey = `products_${user.id}_${page}`
@@ -287,6 +302,14 @@ export const DataProvider = ({ children }) => {
   const fetchMovements = useCallback(async (forceRefresh = false) => {
     if (!user) return
 
+    // VERIFICAÇÃO RIGOROSA: Se há dados locais, NÃO fazer requisições
+    const localData = JSON.parse(localStorage.getItem(`movements_${user.id}`) || '[]')
+    if (localData.length > 0 && !forceRefresh) {
+      console.log('📱 Dados locais de movimentações disponíveis. Usando dados locais.')
+      setMovements(localData)
+      return
+    }
+
     const now = Date.now()
     const cacheKey = `movements_${user.id}`
     
@@ -353,6 +376,14 @@ export const DataProvider = ({ children }) => {
   const fetchBolos = useCallback(async (forceRefresh = false) => {
     if (!user) return
 
+    // VERIFICAÇÃO RIGOROSA: Se há dados locais, NÃO fazer requisições
+    const localData = JSON.parse(localStorage.getItem(`bolos_${user.id}`) || '[]')
+    if (localData.length > 0 && !forceRefresh) {
+      console.log('📱 Dados locais de bolos disponíveis. Usando dados locais.')
+      setBolos(localData)
+      return
+    }
+
     const now = Date.now()
     const cacheKey = `bolos_${user.id}`
     
@@ -418,6 +449,14 @@ export const DataProvider = ({ children }) => {
   // Buscar vendas com cache e throttling
   const fetchSales = useCallback(async (forceRefresh = false) => {
     if (!user) return
+
+    // VERIFICAÇÃO RIGOROSA: Se há dados locais, NÃO fazer requisições
+    const localData = JSON.parse(localStorage.getItem(`sales_${user.id}`) || '[]')
+    if (localData.length > 0 && !forceRefresh) {
+      console.log('📱 Dados locais de vendas disponíveis. Usando dados locais.')
+      setSales(localData)
+      return
+    }
 
     const now = Date.now()
     const cacheKey = `sales_${user.id}`
@@ -1254,18 +1293,23 @@ export const DataProvider = ({ children }) => {
       // SEMPRE carregar dados locais primeiro
       loadLocalData()
       
-      // Só sincronizar com Supabase se NÃO houver dados locais
+      // Só sincronizar com Supabase se NÃO houver dados locais E for primeira vez
       const hasLocalData = products.length > 0 || movements.length > 0 || sales.length > 0 || bolos.length > 0
+      const isFirstTime = !localStorage.getItem(`first_sync_${user.id}`)
       
-      if (!hasLocalData) {
-        // Aguardar 5 segundos antes de tentar Supabase
+      if (!hasLocalData && isFirstTime) {
+        console.log('🔄 Primeira vez - tentando sincronizar com Supabase...')
+        // Aguardar 10 segundos antes de tentar Supabase
         const timeoutId = setTimeout(() => {
           refreshAllData()
-        }, 5000)
+          localStorage.setItem(`first_sync_${user.id}`, 'true')
+        }, 10000)
         
         return () => clearTimeout(timeoutId)
-      } else {
+      } else if (hasLocalData) {
         console.log('📱 Usando dados locais - sem requisições ao Supabase')
+      } else {
+        console.log('📱 Já sincronizado anteriormente - usando dados locais')
       }
     } else {
       console.log('👤 Usuário deslogado')
