@@ -1174,20 +1174,18 @@ export const DataProvider = ({ children }) => {
       // SEMPRE carregar dados locais primeiro
       loadLocalData()
       
-      // Só sincronizar com Supabase se NÃO houver dados locais E não estiver em modo offline
+      // Só sincronizar com Supabase se NÃO houver dados locais
       const hasLocalData = products.length > 0 || movements.length > 0 || sales.length > 0 || bolos.length > 0
       
-      if (!hasLocalData && !SUPABASE_CONFIG.OFFLINE_MODE) {
-        // Aguardar 10 segundos antes de tentar Supabase
+      if (!hasLocalData) {
+        // Aguardar 5 segundos antes de tentar Supabase
         const timeoutId = setTimeout(() => {
           refreshAllData()
-        }, 10000)
+        }, 5000)
         
         return () => clearTimeout(timeoutId)
-      } else if (hasLocalData) {
+      } else {
         console.log('📱 Usando dados locais - sem requisições ao Supabase')
-      } else if (SUPABASE_CONFIG.OFFLINE_MODE) {
-        console.log('📱 Modo offline ativo - sem requisições ao Supabase')
       }
     } else {
       console.log('👤 Usuário deslogado')

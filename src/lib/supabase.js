@@ -43,7 +43,7 @@ export const SUPABASE_CONFIG = {
   REQUEST_TIMEOUT: 30000, // 30 segundos
   
   // Configurações de modo offline
-  OFFLINE_MODE: true, // Priorizar dados locais
+  OFFLINE_MODE: import.meta.env.DEV, // Modo offline apenas em desenvolvimento
   SYNC_INTERVAL: 5 * 60 * 1000, // Sincronizar apenas a cada 5 minutos
   MAX_DAILY_REQUESTS: 50, // Máximo 50 requisições por dia
   
