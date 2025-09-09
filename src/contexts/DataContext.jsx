@@ -186,15 +186,16 @@ export const DataProvider = ({ children }) => {
     }
   }, [user])
 
-  // Limpar todos os dados quando o usuário mudar
+  // Limpar todos os dados quando o usuário mudar - MODIFICADO para preservar dados
   const clearAllData = useCallback(() => {
-    console.log('🧹 Limpando todos os dados do usuário anterior')
-    setProducts([])
-    setMovements([])
-    setSales([])
-    setBolos([])
-    setCache({})
-    setLastDataFetch(0)
+    console.log('📱 Preservando dados do usuário - não limpando automaticamente')
+    // DESABILITADO: Não limpar dados automaticamente para preservar dados cadastrados
+    // setProducts([])
+    // setMovements([])
+    // setSales([])
+    // setBolos([])
+    // setCache({})
+    // setLastDataFetch(0)
   }, [])
 
   // Buscar produtos com cache otimizado e paginação
@@ -1235,52 +1236,12 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-  // Função para limpeza automática de dados antigos
+  // Função para limpeza automática de dados antigos - DESABILITADA
   const cleanupOldData = useCallback(() => {
-    if (!user) return
-    
-    const now = Date.now()
-    const CLEANUP_THRESHOLD = 30 * 24 * 60 * 60 * 1000 // 30 dias
-    
-    try {
-      // Limpar cache antigo
-      Object.keys(cache).forEach(key => {
-        if (now - cache[key].timestamp > CLEANUP_THRESHOLD) {
-          delete cache[key]
-        }
-      })
-      
-      // Limpar localStorage antigo
-      const keys = Object.keys(localStorage)
-      keys.forEach(key => {
-        if (key.startsWith(`products_${user.id}`) || 
-            key.startsWith(`movements_${user.id}`) || 
-            key.startsWith(`sales_${user.id}`) || 
-            key.startsWith(`bolos_${user.id}`)) {
-          try {
-            const data = JSON.parse(localStorage.getItem(key))
-            if (data && data.length > 0 && data[0].created_at) {
-              const dataAge = now - new Date(data[0].created_at).getTime()
-              if (dataAge > CLEANUP_THRESHOLD) {
-                localStorage.removeItem(key)
-                console.log('🧹 Dados antigos removidos:', key)
-              }
-            }
-          } catch (e) {
-            // Se não conseguir parsear, remover
-            localStorage.removeItem(key)
-          }
-        }
-      })
-      
-      // Limpar cache em memória
-      cacheManager.clear()
-      
-      console.log('✅ Limpeza de dados antigos concluída')
-    } catch (error) {
-      console.error('❌ Erro na limpeza de dados:', error)
-    }
-  }, [user, cache])
+    // DESABILITADO: Não limpar dados antigos para preservar dados cadastrados
+    console.log('📱 Limpeza de dados antigos desabilitada - preservando dados cadastrados')
+    return
+  }, [])
 
   // Limpar dados quando o usuário mudar - MODO OFFLINE FIRST
   useEffect(() => {
@@ -1312,22 +1273,24 @@ export const DataProvider = ({ children }) => {
         console.log('📱 Já sincronizado anteriormente - usando dados locais')
       }
     } else {
-      console.log('👤 Usuário deslogado')
-      clearAllData()
-      cacheManager.clear()
+      console.log('👤 Usuário deslogado - preservando dados cadastrados')
+      // DESABILITADO: Não limpar dados no logout para preservar dados cadastrados
+      // clearAllData()
+      // cacheManager.clear()
     }
   }, [user]) // Removidas dependências que causavam loops
 
-  // Escutar mudanças de usuário
+  // Escutar mudanças de usuário - DESABILITADO para preservar dados
   useEffect(() => {
     const handleUserChange = () => {
-      console.log('🔄 Usuário mudou, limpando dados')
-      clearAllData()
+      console.log('📱 Usuário mudou - preservando dados cadastrados')
+      // DESABILITADO: Não limpar dados quando usuário mudar
+      // clearAllData()
     }
 
     window.addEventListener('userChanged', handleUserChange)
     return () => window.removeEventListener('userChanged', handleUserChange)
-  }, [clearAllData])
+  }, [])
 
   const value = {
     products,
