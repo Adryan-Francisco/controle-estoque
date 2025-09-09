@@ -32,20 +32,20 @@ export const SUPABASE_CONFIG = {
   MAX_PAGE_SIZE: 100,
   
   // Configurações ULTRA conservadoras - Modo Offline First
-  CACHE_TTL: 60 * 60 * 1000, // 1 HORA (aumentado drasticamente)
-  MAX_CACHE_SIZE: 10, // Máximo 10 itens no cache (reduzido drasticamente)
+  CACHE_TTL: 2 * 60 * 60 * 1000, // 2 HORAS (aumentado ainda mais)
+  MAX_CACHE_SIZE: 5, // Máximo 5 itens no cache (reduzido ainda mais)
   
   // Configurações de retry ULTRA conservadoras
-  MAX_RETRIES: 0, // SEM retry - falha imediatamente
-  RETRY_DELAY: 10000, // 10 segundos entre retries
+  MAX_RETRIES: 2, // 2 retries para erros de rede
+  RETRY_DELAY: 15000, // 15 segundos entre retries
   
   // Configurações de timeout
-  REQUEST_TIMEOUT: 30000, // 30 segundos
+  REQUEST_TIMEOUT: 60000, // 60 segundos (aumentado)
   
   // Configurações de modo offline
-  OFFLINE_MODE: import.meta.env.DEV, // Modo offline apenas em desenvolvimento
-  SYNC_INTERVAL: 5 * 60 * 1000, // Sincronizar apenas a cada 5 minutos
-  MAX_DAILY_REQUESTS: 50, // Máximo 50 requisições por dia
+  OFFLINE_MODE: false, // Sempre permitir requisições em produção
+  SYNC_INTERVAL: 10 * 60 * 1000, // Sincronizar apenas a cada 10 minutos
+  MAX_DAILY_REQUESTS: 20, // Máximo 20 requisições por dia (reduzido drasticamente)
   
   // Configurações de compressão
   ENABLE_COMPRESSION: true,

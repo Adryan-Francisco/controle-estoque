@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase, SUPABASE_CONFIG, cacheManager, requestCounter } from '../lib/supabase'
 import { useAuth } from './AuthContext'
@@ -25,16 +26,91 @@ export const DataProvider = ({ children }) => {
   const [lastRequestTime, setLastRequestTime] = useState(0)
   
   // Configurações ULTRA conservadoras - Modo Offline First
-  const FETCH_INTERVAL = SUPABASE_CONFIG.CACHE_TTL // 1 HORA
-  const REQUEST_TIMEOUT = SUPABASE_CONFIG.REQUEST_TIMEOUT // 30 segundos
-  const MAX_RETRIES = SUPABASE_CONFIG.MAX_RETRIES // 0 retries - falha imediatamente
-  const MIN_REQUEST_INTERVAL = 5 * 60 * 1000 // 5 MINUTOS entre requisições
+  const FETCH_INTERVAL = SUPABASE_CONFIG.CACHE_TTL // 2 HORAS
+  const REQUEST_TIMEOUT = SUPABASE_CONFIG.REQUEST_TIMEOUT // 60 segundos
+  const MAX_RETRIES = SUPABASE_CONFIG.MAX_RETRIES // 2 retries para erros de rede
+  const MIN_REQUEST_INTERVAL = 10 * 60 * 1000 // 10 MINUTOS entre requisições
   const MAX_QUEUE_SIZE = 1 // Apenas 1 requisição na fila
-  const SYNC_INTERVAL = SUPABASE_CONFIG.SYNC_INTERVAL // 5 minutos
+  const SYNC_INTERVAL = SUPABASE_CONFIG.SYNC_INTERVAL // 10 minutos
   
   const { user } = useAuth()
 
-  // Função para fazer requisições com controle de limite diário
+  // Sistema de fila de requisições para evitar sobrecarga
+  const processQueue = useCallback(async () => {
+    if (isProcessingQueue || requestQueue.length === 0) return
+
+    setIsProcessingQueue(true)
+    console.log(`🔄 Processando fila: ${requestQueue.length} requisições pendentes`)
+
+    while (requestQueue.length > 0) {
+      const { requestFn, resolve, reject } = requestQueue.shift()
+      
+      try {
+        const result = await makeRequestDirect(requestFn)
+        resolve(result)
+      } catch (error) {
+        reject(error)
+      }
+      
+      // Pausa entre requisições para evitar sobrecarga
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+
+    setIsProcessingQueue(false)
+  }, [isProcessingQueue, requestQueue])
+
+  // Função direta para fazer requisições (sem fila)
+  const makeRequestDirect = useCallback(async (requestFn, retries = MAX_RETRIES) => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+        
+        const result = await requestFn()
+        clearTimeout(timeoutId)
+        
+        // Incrementar contador de requisições apenas em caso de sucesso
+        requestCounter.increment()
+        console.log(`📊 Requisições hoje: ${requestCounter.getToday()}/${SUPABASE_CONFIG.MAX_DAILY_REQUESTS}`)
+        
+        return result
+      } catch (error) {
+        clearTimeout(timeoutId)
+        
+        // Tratamento específico para erros de rede
+        if (error.name === 'AbortError' || 
+            error.message.includes('Failed to fetch') || 
+            error.message.includes('ERR_INSUFFICIENT_RESOURCES') ||
+            error.message.includes('NetworkError') ||
+            error.message.includes('TypeError: Failed to fetch')) {
+          
+          console.log(`🔄 Tentativa ${i + 1}/${retries + 1} - Erro de rede: ${error.message}`)
+          
+          if (i < retries) {
+            // Delay progressivo mais longo para erros de rede
+            const delay = Math.min(5000 * Math.pow(2, i), 30000) // Max 30 segundos
+            console.log(`⏳ Aguardando ${delay/1000}s antes de tentar novamente...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          } else {
+            console.log('❌ Falha definitiva de rede após todas as tentativas')
+            throw new Error('Falha de conectividade com Supabase')
+          }
+        }
+        
+        // Para outros erros, tentar novamente se ainda houver tentativas
+        if (i < retries) {
+          console.log(`🔄 Tentativa ${i + 1}/${retries + 1} - Erro: ${error.message}`)
+          await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)))
+          continue
+        }
+        
+        throw error
+      }
+    }
+  }, [REQUEST_TIMEOUT, MAX_RETRIES])
+
+  // Função para fazer requisições com controle de limite diário e fila
   const makeRequest = useCallback(async (requestFn, retries = MAX_RETRIES) => {
     // Verificar limite diário de requisições
     if (!requestCounter.canMakeRequest()) {
@@ -48,31 +124,23 @@ export const DataProvider = ({ children }) => {
       throw new Error('Modo offline ativo')
     }
 
-    for (let i = 0; i <= retries; i++) {
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
-        
-        const result = await requestFn()
-        clearTimeout(timeoutId)
-        
-        // Incrementar contador de requisições
-        requestCounter.increment()
-        console.log(`📊 Requisições hoje: ${requestCounter.getToday()}/${SUPABASE_CONFIG.MAX_DAILY_REQUESTS}`)
-        
-        return result
-      } catch (error) {
-        console.log(`🔄 Tentativa ${i + 1}/${retries + 1} falhou:`, error.message)
-        
-        if (i === retries) {
-          throw error
-        }
-        
-        // Aguardar antes da próxima tentativa
-        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
-      }
+    // Se a fila está muito cheia, rejeitar imediatamente
+    if (requestQueue.length >= MAX_QUEUE_SIZE) {
+      console.log('🚫 Fila de requisições cheia. Usando dados locais.')
+      throw new Error('Fila de requisições cheia')
     }
-  }, [REQUEST_TIMEOUT, MAX_RETRIES])
+
+    // Adicionar à fila se não estiver processando
+    if (isProcessingQueue) {
+      return new Promise((resolve, reject) => {
+        requestQueue.push({ requestFn, resolve, reject })
+        processQueue()
+      })
+    }
+
+    // Processar imediatamente se a fila estiver vazia
+    return makeRequestDirect(requestFn, retries)
+  }, [requestCounter, SUPABASE_CONFIG, requestQueue, isProcessingQueue, MAX_QUEUE_SIZE, processQueue, makeRequestDirect])
 
   // Carregar dados locais como fallback
   const loadLocalData = useCallback(() => {
@@ -144,9 +212,15 @@ export const DataProvider = ({ children }) => {
       return
     }
 
-    // Verificar throttling
+    // Verificar throttling mais rigoroso
     if (!forceRefresh && (now - lastDataFetch) < MIN_REQUEST_INTERVAL) {
       console.log('⏳ Throttling: aguardando para buscar produtos')
+      // Usar dados locais se disponíveis
+      const localData = JSON.parse(localStorage.getItem(`products_${user.id}`) || '[]')
+      if (localData.length > 0) {
+        setProducts(localData)
+        console.log('📱 Usando dados locais durante throttling')
+      }
       return
     }
 
@@ -168,7 +242,10 @@ export const DataProvider = ({ children }) => {
         console.error('❌ Erro ao buscar produtos:', error)
         // Usar dados locais se houver
         const localData = JSON.parse(localStorage.getItem(`products_${user.id}`) || '[]')
-        setProducts(localData)
+        if (localData.length > 0) {
+          setProducts(localData)
+          console.log('📱 Usando dados locais como fallback')
+        }
         return
       }
 
@@ -195,9 +272,12 @@ export const DataProvider = ({ children }) => {
 
     } catch (error) {
       console.error('❌ Erro crítico ao buscar produtos:', error)
-      // Usar dados locais
+      // Usar dados locais se houver
       const localData = JSON.parse(localStorage.getItem(`products_${user.id}`) || '[]')
-      setProducts(localData)
+      if (localData.length > 0) {
+        setProducts(localData)
+        console.log('📱 Usando dados locais como fallback')
+      }
     } finally {
       setIsLoading(false)
     }
