@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase, SUPABASE_CONFIG, cacheManager, requestCounter } from '../lib/supabase'
+import { optimizedQueries, cachedQuery, queryPerformance } from '../lib/queryOptimizer'
 import { useAuth } from './AuthContext'
 
 const DataContext = createContext({})
@@ -245,12 +246,10 @@ export const DataProvider = ({ children }) => {
       setIsLoading(true)
       setLastDataFetch(now)
 
-      const requestFn = () => supabase
-        .from('produtos')
-        .select('id, nome, descricao, preco, estoque_atual, estoque_minimo, categoria, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .range(page * SUPABASE_CONFIG.DEFAULT_PAGE_SIZE, (page + 1) * SUPABASE_CONFIG.DEFAULT_PAGE_SIZE - 1)
+      const requestFn = () => optimizedQueries.getProducts(user.id, {
+        page,
+        pageSize: SUPABASE_CONFIG.DEFAULT_PAGE_SIZE
+      })
 
       const { data, error } = await makeRequest(requestFn)
 
@@ -332,11 +331,9 @@ export const DataProvider = ({ children }) => {
       setIsLoading(true)
       setLastDataFetch(now)
 
-      const requestFn = () => supabase
-        .from('movimentacoes')
-        .select('*, produtos(nome)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      const requestFn = () => optimizedQueries.getMovements(user.id, {
+        limit: 50
+      })
 
       const { data, error } = await makeRequest(requestFn)
 
@@ -406,11 +403,9 @@ export const DataProvider = ({ children }) => {
       setIsLoading(true)
       setLastDataFetch(now)
 
-      const requestFn = () => supabase
-        .from('bolos')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      const requestFn = () => optimizedQueries.getBolos(user.id, {
+        limit: 100
+      })
 
       const { data, error } = await makeRequest(requestFn)
 
@@ -480,11 +475,9 @@ export const DataProvider = ({ children }) => {
       setIsLoading(true)
       setLastDataFetch(now)
 
-      const requestFn = () => supabase
-        .from('vendas')
-        .select('*, venda_itens(*)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      const requestFn = () => optimizedQueries.getSales(user.id, {
+        limit: 50
+      })
 
       const { data, error } = await makeRequest(requestFn)
 
@@ -525,6 +518,47 @@ export const DataProvider = ({ children }) => {
   const [pendingRequests, setPendingRequests] = useState(new Set())
   const [refreshTimeout, setRefreshTimeout] = useState(null)
   
+  // Operações em lote para reduzir requisições
+  const batchOperations = useCallback(async (operations) => {
+    if (!user || operations.length === 0) return { success: true, results: [] }
+
+    try {
+      console.log(`🔄 Executando ${operations.length} operações em lote...`)
+      
+      const results = []
+      const batchSize = 5 // Processar 5 operações por vez
+      
+      for (let i = 0; i < operations.length; i += batchSize) {
+        const batch = operations.slice(i, i + batchSize)
+        
+        // Executar operações em paralelo dentro do lote
+        const batchPromises = batch.map(async (operation) => {
+          try {
+            const result = await operation.fn()
+            return { success: true, result, operation: operation.type }
+          } catch (error) {
+            console.error(`❌ Erro na operação ${operation.type}:`, error)
+            return { success: false, error: error.message, operation: operation.type }
+          }
+        })
+        
+        const batchResults = await Promise.all(batchPromises)
+        results.push(...batchResults)
+        
+        // Pausa entre lotes para evitar sobrecarga
+        if (i + batchSize < operations.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      }
+      
+      console.log(`✅ Lote executado: ${results.filter(r => r.success).length}/${results.length} sucessos`)
+      return { success: true, results }
+    } catch (error) {
+      console.error('❌ Erro ao executar operações em lote:', error)
+      return { success: false, error: error.message, results: [] }
+    }
+  }, [user])
+
   // Atualizar todos os dados - MODO OFFLINE FIRST
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     if (!user) return
@@ -1214,19 +1248,114 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-  // Sincronizar dados locais com Supabase
+  // Sincronização delta inteligente
+  const deltaSync = useCallback(async () => {
+    if (!user) return
+
+    try {
+      console.log('🔄 Iniciando sincronização delta...')
+      
+      const lastSync = localStorage.getItem(`last_sync_${user.id}`)
+      const lastSyncTime = lastSync ? new Date(lastSync) : new Date(0)
+      const now = new Date()
+      
+      // Sincronizar apenas dados modificados desde a última sincronização
+      const syncOperations = []
+      
+      // 1. Sincronizar produtos modificados
+      const localProducts = JSON.parse(localStorage.getItem(`products_${user.id}`) || '[]')
+      const modifiedProducts = localProducts.filter(p => 
+        new Date(p.updated_at || p.created_at) > lastSyncTime
+      )
+      
+      if (modifiedProducts.length > 0) {
+        syncOperations.push({
+          type: 'products',
+          data: modifiedProducts,
+          fn: () => supabase.from('produtos').upsert(modifiedProducts)
+        })
+      }
+      
+      // 2. Sincronizar movimentações modificadas
+      const localMovements = JSON.parse(localStorage.getItem(`movements_${user.id}`) || '[]')
+      const modifiedMovements = localMovements.filter(m => 
+        new Date(m.created_at) > lastSyncTime
+      )
+      
+      if (modifiedMovements.length > 0) {
+        syncOperations.push({
+          type: 'movements',
+          data: modifiedMovements,
+          fn: () => supabase.from('movimentacoes').insert(modifiedMovements)
+        })
+      }
+      
+      // 3. Sincronizar vendas modificadas
+      const localSales = JSON.parse(localStorage.getItem(`sales_${user.id}`) || '[]')
+      const modifiedSales = localSales.filter(s => 
+        new Date(s.updated_at || s.created_at) > lastSyncTime
+      )
+      
+      if (modifiedSales.length > 0) {
+        syncOperations.push({
+          type: 'sales',
+          data: modifiedSales,
+          fn: () => supabase.from('vendas').upsert(modifiedSales)
+        })
+      }
+      
+      // 4. Sincronizar bolos modificados
+      const localBolos = JSON.parse(localStorage.getItem(`bolos_${user.id}`) || '[]')
+      const modifiedBolos = localBolos.filter(b => 
+        new Date(b.updated_at || b.created_at) > lastSyncTime
+      )
+      
+      if (modifiedBolos.length > 0) {
+        syncOperations.push({
+          type: 'bolos',
+          data: modifiedBolos,
+          fn: () => supabase.from('bolos').upsert(modifiedBolos)
+        })
+      }
+      
+      // Executar sincronização em lote
+      if (syncOperations.length > 0) {
+        const result = await batchOperations(syncOperations)
+        
+        if (result.success) {
+          // Atualizar timestamp da última sincronização
+          localStorage.setItem(`last_sync_${user.id}`, now.toISOString())
+          
+          console.log(`✅ Sincronização delta concluída: ${syncOperations.length} operações`)
+          
+          if (window.showNotification) {
+            window.showNotification('✅ Dados sincronizados com sucesso!', 'success')
+          }
+        } else {
+          throw new Error('Falha na sincronização em lote')
+        }
+      } else {
+        console.log('📱 Nenhum dado para sincronizar')
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro na sincronização delta:', error)
+      
+      if (window.showNotification) {
+        window.showNotification('❌ Erro ao sincronizar dados', 'error')
+      }
+    }
+  }, [user, batchOperations])
+
+  // Sincronizar dados locais com Supabase (método tradicional)
   const syncLocalData = async () => {
     if (!user) return
 
     console.log('🔄 Sincronizando dados locais com Supabase...')
     
     try {
-      // Buscar dados do Supabase
-      await refreshAllData(true)
-      
-      if (window.showNotification) {
-        window.showNotification('✅ Dados sincronizados com sucesso!', 'success')
-      }
+      // Usar sincronização delta se disponível
+      await deltaSync()
     } catch (error) {
       console.error('❌ Erro ao sincronizar dados:', error)
       
@@ -1236,12 +1365,120 @@ export const DataProvider = ({ children }) => {
     }
   }
 
-  // Função para limpeza automática de dados antigos - DESABILITADA
+  // Função para arquivamento inteligente de dados antigos
+  const archiveOldData = useCallback(async () => {
+    if (!user) return
+
+    try {
+      console.log('🗄️ Iniciando arquivamento de dados antigos...')
+      
+      const now = new Date()
+      const archiveThreshold = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)) // 90 dias atrás
+      
+      // Arquivar movimentações antigas (manter apenas 90 dias)
+      const oldMovements = movements.filter(m => 
+        new Date(m.created_at) < archiveThreshold
+      )
+      
+      if (oldMovements.length > 0) {
+        console.log(`📦 Arquivando ${oldMovements.length} movimentações antigas...`)
+        
+        // Salvar no localStorage como arquivo
+        const archiveData = {
+          type: 'movements_archive',
+          date: now.toISOString(),
+          count: oldMovements.length,
+          data: oldMovements
+        }
+        
+        const archiveKey = `archive_movements_${user.id}_${now.getFullYear()}_${now.getMonth() + 1}`
+        localStorage.setItem(archiveKey, JSON.stringify(archiveData))
+        
+        // Remover do estado local
+        setMovements(prev => prev.filter(m => 
+          new Date(m.created_at) >= archiveThreshold
+        ))
+        
+        // Atualizar localStorage
+        const updatedMovements = movements.filter(m => 
+          new Date(m.created_at) >= archiveThreshold
+        )
+        localStorage.setItem(`movements_${user.id}`, JSON.stringify(updatedMovements))
+        
+        console.log(`✅ ${oldMovements.length} movimentações arquivadas`)
+      }
+      
+      // Arquivar vendas antigas (manter apenas 6 meses)
+      const salesThreshold = new Date(now.getTime() - (180 * 24 * 60 * 60 * 1000)) // 180 dias
+      const oldSales = sales.filter(s => 
+        new Date(s.created_at) < salesThreshold
+      )
+      
+      if (oldSales.length > 0) {
+        console.log(`📦 Arquivando ${oldSales.length} vendas antigas...`)
+        
+        const archiveData = {
+          type: 'sales_archive',
+          date: now.toISOString(),
+          count: oldSales.length,
+          data: oldSales
+        }
+        
+        const archiveKey = `archive_sales_${user.id}_${now.getFullYear()}_${now.getMonth() + 1}`
+        localStorage.setItem(archiveKey, JSON.stringify(archiveData))
+        
+        // Remover do estado local
+        setSales(prev => prev.filter(s => 
+          new Date(s.created_at) >= salesThreshold
+        ))
+        
+        // Atualizar localStorage
+        const updatedSales = sales.filter(s => 
+          new Date(s.created_at) >= salesThreshold
+        )
+        localStorage.setItem(`sales_${user.id}`, JSON.stringify(updatedSales))
+        
+        console.log(`✅ ${oldSales.length} vendas arquivadas`)
+      }
+      
+      // Limpar cache antigo
+      const cacheKeys = Object.keys(cache)
+      const oldCacheKeys = cacheKeys.filter(key => {
+        const cacheItem = cache[key]
+        return cacheItem && (now - cacheItem.timestamp) > (7 * 24 * 60 * 60 * 1000) // 7 dias
+      })
+      
+      if (oldCacheKeys.length > 0) {
+        console.log(`🧹 Limpando ${oldCacheKeys.length} itens de cache antigos...`)
+        setCache(prev => {
+          const newCache = { ...prev }
+          oldCacheKeys.forEach(key => delete newCache[key])
+          return newCache
+        })
+      }
+      
+      console.log('✅ Arquivamento concluído com sucesso')
+      
+    } catch (error) {
+      console.error('❌ Erro ao arquivar dados antigos:', error)
+    }
+  }, [user, movements, sales, cache])
+
+  // Função para limpeza automática de dados antigos - OTIMIZADA
   const cleanupOldData = useCallback(() => {
-    // DESABILITADO: Não limpar dados antigos para preservar dados cadastrados
-    console.log('📱 Limpeza de dados antigos desabilitada - preservando dados cadastrados')
-    return
-  }, [])
+    // Executar arquivamento apenas uma vez por dia
+    const lastCleanup = localStorage.getItem(`last_cleanup_${user?.id}`)
+    const now = new Date()
+    const lastCleanupDate = lastCleanup ? new Date(lastCleanup) : null
+    
+    if (!lastCleanupDate || (now - lastCleanupDate) > (24 * 60 * 60 * 1000)) {
+      console.log('📱 Executando limpeza diária de dados...')
+      archiveOldData()
+      localStorage.setItem(`last_cleanup_${user?.id}`, now.toISOString())
+    } else {
+      console.log('📱 Limpeza já executada hoje')
+    }
+  }, [user, archiveOldData])
 
   // Limpar dados quando o usuário mudar - MODO OFFLINE FIRST
   useEffect(() => {
@@ -1312,7 +1549,8 @@ export const DataProvider = ({ children }) => {
     fetchProducts,
     fetchMovements,
     fetchSales,
-    fetchBolos
+    fetchBolos,
+    batchOperations
   }
 
   return (
