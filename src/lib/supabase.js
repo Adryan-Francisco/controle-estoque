@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import LZString from 'lz-string'
 
 // Configuração do Supabase - usando variáveis de ambiente para produção
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mfwnbkothjrjtjnvsrbg.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md25ia290aGpyanRqbnZzcmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNDIwNzIsImV4cCI6MjA3MTkxODA3Mn0.7dy0FD5xhNvCff4YGCRFMC2TpTcyyuYh4X9evqX63TE'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://fxyyaajaghtlrgxproir.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4eXlhYWphZ2h0bHJneHByb2lyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0OTg3NDIsImV4cCI6MjA3MzA3NDc0Mn0.BvSft04PaqYDmnaL-pakwnscqf7FygP5114rqMtC-gk'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
