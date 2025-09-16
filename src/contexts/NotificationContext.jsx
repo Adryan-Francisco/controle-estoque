@@ -26,11 +26,14 @@ export const NotificationProvider = ({ children }) => {
     try {
       setLoading(true)
       
-      // Buscar produtos com estoque baixo ou crítico
+      // Buscar apenas campos necessários de produtos com estoque baixo ou crítico
       const { data: produtos, error: produtosError } = await supabase
         .from('produtos')
-        .select('*')
+        .select('id, nome, quantidade')
         .eq('user_id', user.id)
+        .lte('quantidade', 10)
+        .order('quantidade', { ascending: true })
+        .limit(50)
 
       if (produtosError) {
         console.error('Erro ao buscar produtos:', produtosError)
@@ -66,14 +69,11 @@ export const NotificationProvider = ({ children }) => {
         }
       })
 
-      // Simular notificações de movimentações recentes
+      // Notificações de movimentações recentes (apenas campos necessários)
       try {
         const { data: movimentacoes, error: movimentacoesError } = await supabase
           .from('movimentacoes')
-          .select(`
-            *,
-            produtos (nome)
-          `)
+          .select('id, tipo, quantidade, created_at, produtos(nome)')
           .eq('usuario_id', user.id)
           .order('created_at', { ascending: false })
           .limit(3)
