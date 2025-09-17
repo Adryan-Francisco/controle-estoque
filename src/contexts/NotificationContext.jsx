@@ -66,17 +66,11 @@ export const NotificationProvider = ({ children }) => {
         }
       })
 
-      // Simular notificações de movimentações recentes
+      // Simular notificações de movimentações recentes - DESABILITADO
       try {
-        const { data: movimentacoes, error: movimentacoesError } = await supabase
-          .from('movimentacoes')
-          .select(`
-            *,
-            produtos (nome)
-          `)
-          .eq('usuario_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(3)
+        // DESABILITADO: Tabela movimentacoes não existe
+        const movimentacoes = []
+        const movimentacoesError = null
 
         if (!movimentacoesError && movimentacoes) {
           movimentacoes.forEach(mov => {

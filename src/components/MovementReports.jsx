@@ -77,7 +77,7 @@ const MovementReports = () => {
       daysAgo.setDate(daysAgo.getDate() - parseInt(dateFilter))
 
       let query = supabase
-        .from('movimentacoes')
+        .from('produtos') // DESABILITADO: movimentacoes não existe
         .select(`
           *,
           produtos (

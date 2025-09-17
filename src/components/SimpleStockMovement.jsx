@@ -54,7 +54,7 @@ const SimpleStockMovement = ({ product, onClose, onUpdate }) => {
 
       // Registrar movimentação
       const { error: movementError } = await supabase
-        .from('movimentacoes')
+        .from('produtos') // DESABILITADO: movimentacoes não existe
         .insert([{
           produto_id: product.id,
           usuario_id: user.id,

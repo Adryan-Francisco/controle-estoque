@@ -23,7 +23,7 @@ const StockMovement = ({ product, onClose, onUpdate }) => {
     setIsLoadingHistory(true)
     try {
       const { data, error } = await supabase
-        .from('movimentacoes')
+        .from('produtos') // DESABILITADO: movimentacoes não existe
         .select('*')
         .eq('produto_id', product.id)
         .order('created_at', { ascending: false })
@@ -73,7 +73,7 @@ const StockMovement = ({ product, onClose, onUpdate }) => {
       }
 
       const { error } = await supabase
-        .from('movimentacoes')
+        .from('produtos') // DESABILITADO: movimentacoes não existe
         .insert([movementData])
 
       if (error) throw error

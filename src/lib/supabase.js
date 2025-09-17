@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Configuração do Supabase - usando variáveis de ambiente para produção
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mfwnbkothjrjtjnvsrbg.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md25ia290aGpyanRqbnZzcmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNDIwNzIsImV4cCI6MjA3MTkxODA3Mn0.7dy0FD5xhNvCff4YGCRFMC2TpTcyyuYh4X9evqX63TE'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://fxyyaajaghtlrgxproir.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4eXlhYWphZ2h0bHJneHByb2lyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0OTg3NDIsImV4cCI6MjA3MzA3NDc0Mn0.BvSft04PaqYDmnaL-pakwnscqf7FygP5114rqMtC-gk'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -32,20 +32,20 @@ export const SUPABASE_CONFIG = {
   MAX_PAGE_SIZE: 100,
   
   // Configurações ULTRA conservadoras - Modo Offline First
-  CACHE_TTL: 2 * 60 * 60 * 1000, // 2 HORAS (aumentado ainda mais)
-  MAX_CACHE_SIZE: 5, // Máximo 5 itens no cache (reduzido ainda mais)
+  CACHE_TTL: 4 * 60 * 60 * 1000, // 4 HORAS (aumentado para reduzir requisições)
+  MAX_CACHE_SIZE: 10, // Máximo 10 itens no cache
   
   // Configurações de retry ULTRA conservadoras
-  MAX_RETRIES: 2, // 2 retries para erros de rede
-  RETRY_DELAY: 15000, // 15 segundos entre retries
+  MAX_RETRIES: 1, // Apenas 1 retry para evitar loops
+  RETRY_DELAY: 30000, // 30 segundos entre retries (aumentado)
   
   // Configurações de timeout
-  REQUEST_TIMEOUT: 60000, // 60 segundos (aumentado)
+  REQUEST_TIMEOUT: 30000, // 30 segundos (reduzido para falhar mais rápido)
   
-  // Configurações de modo offline
-  OFFLINE_MODE: false, // Sempre permitir requisições em produção
-  SYNC_INTERVAL: 10 * 60 * 1000, // Sincronizar apenas a cada 10 minutos
-  MAX_DAILY_REQUESTS: 20, // Máximo 20 requisições por dia (reduzido drasticamente)
+  // Configurações de modo online
+  OFFLINE_MODE: false, // Modo online ativo
+  SYNC_INTERVAL: 5 * 60 * 1000, // Sincronizar a cada 5 minutos
+  MAX_DAILY_REQUESTS: 100, // Máximo 100 requisições por dia
   
   // Configurações de compressão
   ENABLE_COMPRESSION: true,
